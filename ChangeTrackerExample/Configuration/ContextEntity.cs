@@ -9,18 +9,14 @@ using System.Threading.Tasks;
 
 namespace ChangeTrackerExample.Configuration
 {
-    public class RegisteredEntity<TSource>
+    public class ContextEntity<TSourceContext, TSource>
+        where TSourceContext : IEntityContext
         where TSource : class, IEntity
     {
-        internal RegisteredEntity()
+        public MappedContextEntity<TSourceContext, TSource, TTarget> Map<TTarget>(Expression<Func<TSource, TTarget>> mapper)
+            where TTarget : class
         {
-
-        }
-
-        public ContextEntity<TSourceContext, TSource> FromContext<TSourceContext>()
-            where TSourceContext : IEntityContext
-        {
-            return new ContextEntity<TSourceContext, TSource>();
+            return new MappedContextEntity<TSourceContext, TSource, TTarget>(mapper);
         }
     }
 }

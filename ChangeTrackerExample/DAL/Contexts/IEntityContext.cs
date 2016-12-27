@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ChangeTrackerExample.DAL.Contexts
 {
-    public interface IEntityContext
+    public interface IEntityContext : IDisposable
     {
         IQueryable<TEntity> Get<TEntity>() where TEntity : class;
     }

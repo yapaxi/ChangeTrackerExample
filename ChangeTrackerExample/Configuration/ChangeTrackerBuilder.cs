@@ -18,19 +18,24 @@ namespace ChangeTrackerExample.Configuration
             _builder = builder;
         }
 
-        public RegisteredEntity<TSource> RegisterEntity<TSource>()
+        public RegisteredEntity<TSource> Entity<TSource>()
             where TSource : class, IEntity
         {
             return new RegisteredEntity<TSource>();
         }
 
-        internal void RegisterEntityDestination<TSourceContext, TSource, TTarget>(
-            BoundedMappedEntity<TSourceContext, TSource, TTarget> entitySource
+        public void RegisterEntityDestination(
+            IBoundedMappedEntity entitySource,
+            string targetExchange,
+            bool allowComplexObjects
         )
-            where TSource : class, IEntity
-            where TSourceContext : IEntityContext
         {
+            if (!allowComplexObjects && entitySource.TargetTypeSchema.Any(e => e.Children.Any()))
+            {
+                throw new Exception($"Complex objects are not allowed for echange {targetExchange}");
+            }
 
+            _builder.RegisterInstance(new EntityConfig(entitySource, targetExchange));
         }
     }
 }
