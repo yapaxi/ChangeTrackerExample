@@ -27,8 +27,8 @@ namespace ChangeTrackerExample
         private static readonly string CT_LOOPBACK_QUEUE = ConfigurationManager.ConnectionStrings["ctLoopbackQueue"].ConnectionString;
         private static readonly string[] RABBIT_NAMES = new[] { CT_EXCHANGE_1, CT_EXCHANGE_2, CT_LOOPBACK_EXCHANGE, CT_LOOPBACK_QUEUE };
 
-        private static readonly string DEBUG_CT_EXCHANGE_1_QUEUE = CT_EXCHANGE_1 + "-to-console";
-        private static readonly string DEBUG_CT_EXCHANGE_2_QUEUE = CT_EXCHANGE_2 + "-to-console";
+        private static readonly string DEBUG_CT_EXCHANGE_1_QUEUE = "ha." + CT_EXCHANGE_1 + "-to-console";
+        private static readonly string DEBUG_CT_EXCHANGE_2_QUEUE = "ha." + CT_EXCHANGE_2 + "-to-console";
         private static readonly string SETUP_MODEL = "RABBIT_SETUP";
 
         public static void Main(string[] args)
@@ -41,7 +41,7 @@ namespace ChangeTrackerExample
 
             var container = containerBuilder.Build();
 
-            SetupRabbit(container);
+           SetupRabbit(container);
 
             var tracker = new ChangeTracker(CT_LOOPBACK_EXCHANGE, CT_LOOPBACK_QUEUE, container);
 
@@ -99,18 +99,29 @@ namespace ChangeTrackerExample
                 var rnd = new Random((int)DateTime.UtcNow.Ticks);
                 while (true)
                 {
-                    var entity = context.SomeEntities.Add(new SomeEntity()
+                    var lst = new List<SomeEntity>(1000);
+                    for (int i = 0; i < 1000; i++)
                     {
-                        Int32 = rnd.Next(0, 1024),
-                        Int64 = rnd.Next(0, 1024),
-                        Guid = Guid.NewGuid(),
-                        ShortString = new string(Enumerable.Range(0, 128).Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
-                        MaxString = new string(Enumerable.Range(0, 128).Select(e => (char)rnd.Next('A', 'Z')).ToArray())
-                    });
+                        var entity = context.SomeEntities.Add(new SomeEntity()
+                        {
+                            Int32 = rnd.Next(0, 1024),
+                            Int64 = rnd.Next(0, 1024),
+                            Guid = Guid.NewGuid(),
+                            ShortString = new string(Enumerable.Range(0, 128).Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
+                            MaxString = new string(Enumerable.Range(0, 128).Select(e => (char)rnd.Next('A', 'Z')).ToArray())
+                        });
+                        lst.Add(entity);
+                    }
+
                     context.SaveChanges();
-                    Console.WriteLine($"Add entity with id {entity.Id}");
-                    tracker.NotifyEntityChanged<SomeEntity>(entity.Id);
-                    Console.WriteLine($"Notified for entity with id {entity.Id}");
+
+                    Console.WriteLine($"Sync {lst.Count}");
+
+                    foreach (var entity in lst)
+                    {
+                        tracker.NotifyEntityChanged<SomeEntity>(entity.Id);
+                        Console.WriteLine($"Notified for entity with id {entity.Id}");
+                    }
                 //    Thread.Sleep(1000);
                 }
             }
