@@ -111,7 +111,7 @@ namespace ChangeTrackerExample
                     Console.WriteLine($"Add entity with id {entity.Id}");
                     tracker.NotifyEntityChanged<SomeEntity>(entity.Id);
                     Console.WriteLine($"Notified for entity with id {entity.Id}");
-                    Thread.Sleep(1000);
+                //    Thread.Sleep(1000);
                 }
             }
         }
@@ -121,9 +121,7 @@ namespace ChangeTrackerExample
         {
             lock (LOCK)
             {
-                var msg = Encoding.Unicode.GetString(args.Body);
-                Console.WriteLine(JObject.Parse(msg).ToString(Formatting.Indented));
-                Console.WriteLine("---------------");
+                Console.WriteLine($"Got message from {args.Exchange}");
             }
         }
 
