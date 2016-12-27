@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace ChangeTrackerExample.Configuration
 {
-    internal class EntityConfig
+    public class EntityConfig
     {
-        public EntityConfig(IBoundedMappedEntity entity, string targetExchange)
+        internal EntityConfig(IBoundedMappedEntity entity, string targetExchange)
         {
             Entity = entity;
             TargetExchangeFQN = targetExchange;
@@ -16,5 +16,17 @@ namespace ChangeTrackerExample.Configuration
 
         public IBoundedMappedEntity Entity { get; }
         public string TargetExchangeFQN { get; }
+    }
+
+    public class EntityGroupedConfig
+    {
+        internal EntityGroupedConfig(IReadOnlyCollection<EntityConfig> entities)
+        {
+            Entities = entities
+                .GroupBy(e => e.Entity.SourceType.FullName)
+                .ToDictionary(e => e.Key, e => e.ToArray());
+        }
+
+        public IReadOnlyDictionary<string, EntityConfig[]> Entities { get; }
     }
 }

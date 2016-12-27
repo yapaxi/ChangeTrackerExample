@@ -12,10 +12,12 @@ namespace ChangeTrackerExample.Configuration
     public class ChangeTrackerBuilder
     {
         private readonly ContainerBuilder _builder;
+        private readonly List<EntityConfig> _configs;
 
         public ChangeTrackerBuilder(ContainerBuilder builder)
         {
             _builder = builder;
+            _configs = new List<EntityConfig>();
         }
 
         public RegisteredEntity<TSource> Entity<TSource>()
@@ -35,7 +37,12 @@ namespace ChangeTrackerExample.Configuration
                 throw new Exception($"Complex objects are not allowed for echange {targetExchange}");
             }
 
-            _builder.RegisterInstance(new EntityConfig(entitySource, targetExchange));
+            _configs.Add(new EntityConfig(entitySource, targetExchange));
+        }
+
+        public void Build()
+        {
+            _builder.RegisterInstance(new EntityGroupedConfig(_configs));
         }
     }
 }

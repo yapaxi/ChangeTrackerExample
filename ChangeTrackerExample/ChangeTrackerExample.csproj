@@ -66,7 +66,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="App\ChangeTracker.cs" />
+    <Compile Include="App\ChangeHandler.cs" />
+    <Compile Include="App\Header.cs" />
+    <Compile Include="App\LoopbackListener.cs" />
+    <Compile Include="App\LoopbackNotifier.cs" />
     <Compile Include="Configuration\ChangeTrackerBuilder.cs" />
     <Compile Include="Configuration\ContextEntity.cs" />
     <Compile Include="Configuration\EntityConfig.cs" />

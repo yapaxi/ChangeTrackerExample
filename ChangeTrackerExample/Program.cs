@@ -25,12 +25,10 @@ namespace ChangeTrackerExample
         private static readonly string CT_EXCHANGE_2 = ConfigurationManager.ConnectionStrings["ctExchange2"].ConnectionString;
         private static readonly string CT_LOOPBACK_EXCHANGE = ConfigurationManager.ConnectionStrings["ctLoopbackExchange"].ConnectionString;
         private static readonly string CT_LOOPBACK_QUEUE = ConfigurationManager.ConnectionStrings["ctLoopbackQueue"].ConnectionString;
-        private static readonly string[] RABBIT_NAMES = new[] { CT_EXCHANGE_1, CT_EXCHANGE_2, CT_LOOPBACK_EXCHANGE, CT_LOOPBACK_QUEUE };
-
+      
         private static readonly string DEBUG_CT_EXCHANGE_1_QUEUE = "ha." + CT_EXCHANGE_1 + "-to-console";
         private static readonly string DEBUG_CT_EXCHANGE_2_QUEUE = "ha." + CT_EXCHANGE_2 + "-to-console";
-        private static readonly string SETUP_MODEL = "RABBIT_SETUP";
-
+        
         public static void Main(string[] args)
         {
             var containerBuilder = new ContainerBuilder();
@@ -41,19 +39,17 @@ namespace ChangeTrackerExample
 
             var container = containerBuilder.Build();
 
-           SetupRabbit(container);
-
-            var tracker = new ChangeTracker(CT_LOOPBACK_EXCHANGE, CT_LOOPBACK_QUEUE, container);
-
+            SetupRabbit(container);
+            
             RunDebug(container);
-            RunDebugGenerator(container, tracker);
+            RunDebugGenerator(container);
 
             Process.GetCurrentProcess().WaitForExit();
         }
 
         private static void SetupRabbit(IContainer container)
         {
-            var model = container.ResolveNamed<IModel>(SETUP_MODEL);
+            var model = container.Resolve<IConnection>().CreateModel();
 
             //output
             model.ExchangeDeclare(CT_EXCHANGE_1, "direct", true, false, null);
@@ -91,12 +87,17 @@ namespace ChangeTrackerExample
             Console.WriteLine("RunDebug done");
         }
 
-        private static void RunDebugGenerator(IContainer container, ChangeTracker tracker)
+        private static void RunDebugGenerator(IContainer container)
         {
             Console.WriteLine("RunDebugGenerator done");
-            using (var context = container.Resolve<SourceContext>())
+
+            using (var scope = container.BeginLifetimeScope())
             {
+                var context = scope.Resolve<SourceContext>();
+                var notifier = scope.Resolve<LoopbackNotifier>();
+
                 var rnd = new Random((int)DateTime.UtcNow.Ticks);
+
                 while (true)
                 {
                     var lst = new List<SomeEntity>(1000);
@@ -119,7 +120,7 @@ namespace ChangeTrackerExample
 
                     foreach (var entity in lst)
                     {
-                        tracker.NotifyEntityChanged<SomeEntity>(entity.Id);
+                        notifier.NotifyChanged<SomeEntity>(entity.Id);
                         Console.WriteLine($"Notified for entity with id {entity.Id}");
                     }
                 //    Thread.Sleep(1000);
@@ -146,25 +147,21 @@ namespace ChangeTrackerExample
                 .As<IConnection>()
                 .SingleInstance();
 
-            foreach (var name in RABBIT_NAMES)
-            {
-                containerBuilder.Register(e => e.Resolve<IConnection>().CreateModel())
-                    .Named<IModel>(name)
-                    .InstancePerLifetimeScope();
-            }
+            containerBuilder.Register(e => new ChangeHandler(
+                config: e.Resolve<EntityGroupedConfig>(),
+                context: e.Resolve<SourceContext>(),
+                outputModel: e.Resolve<IConnection>().CreateModel()
+            )).InstancePerLifetimeScope();
 
-            containerBuilder.Register(e => e.Resolve<IConnection>().CreateModel())
-                    .Named<IModel>(SETUP_MODEL)
-                    .SingleInstance();
+            containerBuilder.Register(e => new LoopbackNotifier(
+                model: e.Resolve<IConnection>().CreateModel(),
+                loopbackExchange: CT_LOOPBACK_EXCHANGE
+            )).InstancePerLifetimeScope();
 
-            containerBuilder.Register(e =>
-            {
-                var consumer = new EventingBasicConsumer(e.ResolveNamed<IModel>(CT_LOOPBACK_QUEUE));
-                consumer.Received += (sender, obj) => { };
-                return consumer;
-            })
-            .As<EventingBasicConsumer>()
-            .SingleInstance();
+            containerBuilder.Register(e => new LoopbackListener(
+                loopbackModel: e.Resolve<IConnection>().CreateModel(),
+                loopbackQueue: CT_LOOPBACK_QUEUE
+            )).SingleInstance();
         }
 
         private static void RegisterChangeTracker(ContainerBuilder containerBuilder)
@@ -192,6 +189,8 @@ namespace ChangeTrackerExample
             changeTrackerBuilder.RegisterEntityDestination(entityMapping1, CT_EXCHANGE_2, true);
 
             changeTrackerBuilder.RegisterEntityDestination(entityMapping2, CT_EXCHANGE_2, true);
+
+            changeTrackerBuilder.Build();
         }
 
         private static void RegisterDB(ContainerBuilder containerBuilder)
