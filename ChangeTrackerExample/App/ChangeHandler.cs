@@ -47,6 +47,9 @@ namespace ChangeTrackerExample.App
                 properties.DeliveryMode = 2;
                 properties.Headers = new Dictionary<string, object>();
                 properties.Headers["schema"] = config.Entity.SerializedTargetTypeSchema;
+                properties.Headers["schema-format-version"] = config.Entity.SchemaFormatVersion;
+                properties.Headers["schema-gen-utc"] = config.Entity.TargetTypeSchemaGeneratedDateUTC.ToString("yyyy-MM-ddTHH:mm:ssZ");
+                properties.Headers["schema-checksum"] = config.Entity.SerializedTargetTypeSchemaChecksum;
 
                 var bytes = GetBytes(json);
                 _outputModel.BasicPublish(config.TargetExchangeFQN, "", properties, bytes);

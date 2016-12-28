@@ -8,6 +8,8 @@ namespace ChangeTrackerExample.Configuration
 {
     public class EntityProperty
     {
+        public const int VERSION = 1;
+
         public string Name { get; set; }
         public string Type { get; set; }
         public int? Size { get; set; }

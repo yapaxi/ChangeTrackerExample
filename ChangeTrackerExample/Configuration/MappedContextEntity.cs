@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,14 +19,20 @@ namespace ChangeTrackerExample.Configuration
         where TSource : class, IEntity
         where TTarget : class
     {
+        private readonly MD5 _md5;
+
         public Expression<Func<TSource, TTarget>> Mapper { get; }
 
         internal MappedContextEntity(Expression<Func<TSource, TTarget>> mapper)
         {
+            _md5 = MD5.Create();
             Mapper = mapper;
             TargetType = typeof(TTarget);
             TargetTypeSchema = GetTypeSchema(typeof(TTarget));
             SerializedTargetTypeSchema = JsonConvert.SerializeObject(TargetTypeSchema);
+            SerializedTargetTypeSchemaChecksum = GetMD5(SerializedTargetTypeSchema);
+            TargetTypeSchemaGeneratedDateUTC = DateTime.UtcNow;
+            SchemaFormatVersion = EntityProperty.VERSION;
         }
 
         public async Task<object> GetAndMapByIdAsync(IEntityContext context, int id)
@@ -48,6 +55,13 @@ namespace ChangeTrackerExample.Configuration
         public IReadOnlyCollection<object> GetAndMapByRange(IEntityContext context, int fromId, int toId)
         {
             return context.Get<TSource>().Where(e => e.Id >= fromId && e.Id <= toId).Select(Mapper).ToList();
+        }
+
+        private long GetMD5(string str)
+        {
+            var array = new byte[str.Length * sizeof(char)];
+            Buffer.BlockCopy(str.ToCharArray(), 0, array, 0, array.Length);
+            return BitConverter.ToInt64(_md5.ComputeHash(array), 0);
         }
 
         private IReadOnlyCollection<EntityProperty> GetTypeSchema(Type t)
@@ -90,11 +104,15 @@ namespace ChangeTrackerExample.Configuration
 
         public Guid Id { get; } = Guid.NewGuid();
 
+        public Type ContextType => typeof(TSourceContext);
         public Type SourceType => typeof(TSource);
         public Type TargetType { get; }
+
         public IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
         public string SerializedTargetTypeSchema { get; }
-        public Type ContextType => typeof(TSourceContext);
+        public long SerializedTargetTypeSchemaChecksum { get; }
+        public long SchemaFormatVersion { get; }
+        public DateTime TargetTypeSchemaGeneratedDateUTC { get; }
 
         #endregion
     }
@@ -106,6 +124,9 @@ namespace ChangeTrackerExample.Configuration
         Type TargetType { get; }
         IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
         string SerializedTargetTypeSchema { get; }
+        long SerializedTargetTypeSchemaChecksum { get; }
+        long SchemaFormatVersion { get; }
+        DateTime TargetTypeSchemaGeneratedDateUTC { get; }
         Type ContextType { get; }
 
         Task<object> GetAndMapByIdAsync(IEntityContext context, int id);
