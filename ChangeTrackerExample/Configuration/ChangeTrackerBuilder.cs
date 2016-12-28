@@ -9,12 +9,12 @@ using ChangeTrackerExample.DAL.Contexts;
 
 namespace ChangeTrackerExample.Configuration
 {
-    public class ChangeTrackerBuilder
+    public class EntityBuilder
     {
         private readonly ContainerBuilder _builder;
         private readonly List<EntityConfig> _configs;
 
-        public ChangeTrackerBuilder(ContainerBuilder builder)
+        public EntityBuilder(ContainerBuilder builder)
         {
             _builder = builder;
             _configs = new List<EntityConfig>();
@@ -26,7 +26,7 @@ namespace ChangeTrackerExample.Configuration
             return new RegisteredEntity<TSource>();
         }
 
-        public void RegisterEntityDestination(
+        public void RegisterDestination(
             IBoundedMappedEntity entitySource,
             string targetExchange,
             bool allowComplexObjects

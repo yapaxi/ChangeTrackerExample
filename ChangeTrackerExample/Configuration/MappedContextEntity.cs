@@ -25,6 +25,7 @@ namespace ChangeTrackerExample.Configuration
             Mapper = mapper;
             TargetType = typeof(TTarget);
             TargetTypeSchema = GetTypeSchema(typeof(TTarget));
+            SerializedTargetTypeSchema = JsonConvert.SerializeObject(TargetTypeSchema);
         }
 
         public async Task<object> GetAndMapByIdAsync(IEntityContext context, int id)
@@ -92,6 +93,7 @@ namespace ChangeTrackerExample.Configuration
         public Type SourceType => typeof(TSource);
         public Type TargetType { get; }
         public IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
+        public string SerializedTargetTypeSchema { get; }
         public Type ContextType => typeof(TSourceContext);
 
         #endregion
@@ -103,6 +105,7 @@ namespace ChangeTrackerExample.Configuration
         Type SourceType { get; }
         Type TargetType { get; }
         IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
+        string SerializedTargetTypeSchema { get; }
         Type ContextType { get; }
 
         Task<object> GetAndMapByIdAsync(IEntityContext context, int id);

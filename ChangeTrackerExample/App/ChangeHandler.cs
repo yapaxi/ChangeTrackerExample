@@ -46,7 +46,7 @@ namespace ChangeTrackerExample.App
                 properties.ContentType = "application/json";
                 properties.DeliveryMode = 2;
                 properties.Headers = new Dictionary<string, object>();
-                properties.Headers["schema"] = JsonConvert.SerializeObject(config.Entity.TargetTypeSchema);
+                properties.Headers["schema"] = config.Entity.SerializedTargetTypeSchema;
 
                 var bytes = GetBytes(json);
                 _outputModel.BasicPublish(config.TargetExchangeFQN, "", properties, bytes);

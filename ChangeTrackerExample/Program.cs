@@ -35,21 +35,40 @@ namespace ChangeTrackerExample
 
             RegisterDB(containerBuilder);
             RegisterRabbit(containerBuilder);
-            RegisterChangeTracker(containerBuilder);
+            RegisterEntities(containerBuilder);
+            RegisterHandlers(containerBuilder); 
 
             var container = containerBuilder.Build();
 
             SetupRabbit(container);
-            
-            RunDebug(container);
+            RunLoopbackListener(container);
+            RunDebugDrainers(container);
             RunDebugGenerator(container);
 
             Process.GetCurrentProcess().WaitForExit();
         }
 
+        private static void RunLoopbackListener(IContainer container)
+        {
+            var listener = container.Resolve<LoopbackListener>();
+            listener.EntityChanged += (s, o) =>
+            {
+                using (var scope = container.BeginLifetimeScope())
+                {
+                    var handler = scope.Resolve<ChangeHandler>();
+                    handler.HandleEntityChanged(o.Type, o.Id);
+                }
+            };
+            listener.Cancelled += (s, o) =>
+            {
+
+            };
+            listener.Start();
+        }
+
         private static void SetupRabbit(IContainer container)
         {
-            var model = container.Resolve<IConnection>().CreateModel();
+            var model = container.Resolve<IModel>();
 
             //output
             model.ExchangeDeclare(CT_EXCHANGE_1, "direct", true, false, null);
@@ -70,7 +89,7 @@ namespace ChangeTrackerExample
             Console.WriteLine("SetupRabbit done");
         }
 
-        private static void RunDebug(IContainer container)
+        private static void RunDebugDrainers(IContainer container)
         {
             var connection = container.Resolve<IConnection>();
 
@@ -97,19 +116,19 @@ namespace ChangeTrackerExample
                 var notifier = scope.Resolve<LoopbackNotifier>();
 
                 var rnd = new Random((int)DateTime.UtcNow.Ticks);
-
+                var range = Enumerable.Range(0, 128).ToArray();
                 while (true)
                 {
-                    var lst = new List<SomeEntity>(1000);
-                    for (int i = 0; i < 1000; i++)
+                    var lst = new List<SomeEntity>(100);
+                    for (int i = 0; i < 100; i++)
                     {
                         var entity = context.SomeEntities.Add(new SomeEntity()
                         {
                             Int32 = rnd.Next(0, 1024),
                             Int64 = rnd.Next(0, 1024),
                             Guid = Guid.NewGuid(),
-                            ShortString = new string(Enumerable.Range(0, 128).Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
-                            MaxString = new string(Enumerable.Range(0, 128).Select(e => (char)rnd.Next('A', 'Z')).ToArray())
+                            ShortString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
+                            MaxString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray())
                         });
                         lst.Add(entity);
                     }
@@ -123,51 +142,50 @@ namespace ChangeTrackerExample
                         notifier.NotifyChanged<SomeEntity>(entity.Id);
                         Console.WriteLine($"Notified for entity with id {entity.Id}");
                     }
-                //    Thread.Sleep(1000);
                 }
-            }
-        }
-
-        private static readonly object LOCK = new object();
-        private static void WriteMessageToConsole(BasicDeliverEventArgs args)
-        {
-            lock (LOCK)
-            {
-                Console.WriteLine($"Got message from {args.Exchange}");
             }
         }
 
         private static void RegisterRabbit(ContainerBuilder containerBuilder)
         {
-            containerBuilder.Register(e => new ConnectionFactory() { Uri = RABBIT_URI })
+            containerBuilder
+                .Register(e => new ConnectionFactory() { Uri = RABBIT_URI })
                 .As<IConnectionFactory>()
                 .SingleInstance();
 
-            containerBuilder.Register(e => e.Resolve<IConnectionFactory>().CreateConnection())
+            containerBuilder
+                .Register(e => e.Resolve<IConnectionFactory>().CreateConnection())
                 .As<IConnection>()
                 .SingleInstance();
 
+            containerBuilder
+                .Register(e => e.Resolve<IConnection>().CreateModel())
+                .As<IModel>();
+        }
+
+        private static void RegisterHandlers(ContainerBuilder containerBuilder)
+        {
             containerBuilder.Register(e => new ChangeHandler(
                 config: e.Resolve<EntityGroupedConfig>(),
                 context: e.Resolve<SourceContext>(),
-                outputModel: e.Resolve<IConnection>().CreateModel()
+                outputModel: e.Resolve<IModel>()
             )).InstancePerLifetimeScope();
 
             containerBuilder.Register(e => new LoopbackNotifier(
-                model: e.Resolve<IConnection>().CreateModel(),
+                model: e.Resolve<IModel>(),
                 loopbackExchange: CT_LOOPBACK_EXCHANGE
             )).InstancePerLifetimeScope();
 
             containerBuilder.Register(e => new LoopbackListener(
-                loopbackModel: e.Resolve<IConnection>().CreateModel(),
+                loopbackModel: e.Resolve<IModel>(),
                 loopbackQueue: CT_LOOPBACK_QUEUE
             )).SingleInstance();
         }
 
-        private static void RegisterChangeTracker(ContainerBuilder containerBuilder)
+        private static void RegisterEntities(ContainerBuilder containerBuilder)
         {
-            var changeTrackerBuilder = new ChangeTrackerBuilder(containerBuilder);
-            var entity = changeTrackerBuilder.Entity<SomeEntity>().FromContext<SourceContext>();
+            var entityBuilder = new EntityBuilder(containerBuilder);
+            var entity = entityBuilder.Entity<SomeEntity>().FromContext<SourceContext>();
             var entityMapping1 = entity.Map(e => new
             {
                 Id = e.Id,
@@ -177,6 +195,7 @@ namespace ChangeTrackerExample
                 YYY = e.MaxString,
                 XXX = e.ShortString
             });
+
             var entityMapping2 = entity.Map(e => new
             {
                 Id = e.Id,
@@ -185,12 +204,12 @@ namespace ChangeTrackerExample
                 Complex = new { e.Int32, e.Int64 }
             });
 
-            changeTrackerBuilder.RegisterEntityDestination(entityMapping1, CT_EXCHANGE_1, false);
-            changeTrackerBuilder.RegisterEntityDestination(entityMapping1, CT_EXCHANGE_2, true);
+            entityBuilder.RegisterDestination(entityMapping1, CT_EXCHANGE_1, false);
+            entityBuilder.RegisterDestination(entityMapping1, CT_EXCHANGE_2, true);
 
-            changeTrackerBuilder.RegisterEntityDestination(entityMapping2, CT_EXCHANGE_2, true);
+            entityBuilder.RegisterDestination(entityMapping2, CT_EXCHANGE_2, true);
 
-            changeTrackerBuilder.Build();
+            entityBuilder.Build();
         }
 
         private static void RegisterDB(ContainerBuilder containerBuilder)
@@ -198,6 +217,15 @@ namespace ChangeTrackerExample
             var targetDBConnectionString = ConfigurationManager.ConnectionStrings["targetDB"].ConnectionString;
             var sourceDBConnectionString = ConfigurationManager.ConnectionStrings["sourceDB"].ConnectionString;
             containerBuilder.Register(e => new SourceContext(sourceDBConnectionString)).As<SourceContext>();
+        }
+        
+        private static readonly object LOCK = new object();
+        private static void WriteMessageToConsole(BasicDeliverEventArgs args)
+        {
+            lock (LOCK)
+            {
+                Console.WriteLine($"Got message from {args.Exchange}");
+            }
         }
     }
 }
