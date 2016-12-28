@@ -1,4 +1,5 @@
 ﻿using Autofac;
+using EasyNetQ.Management.Client;
 using RabbitModel;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -26,7 +27,7 @@ namespace IntegrationServiceExample
             {
                 using (var outerScope = container.BeginLifetimeScope("outer"))
                 {
-                    var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<IModel>());
+                    var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<ManagementClient>());
 
                     rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_1);
                     rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_2);

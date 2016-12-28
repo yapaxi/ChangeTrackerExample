@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client;
+﻿using EasyNetQ.Management.Client;
+using EasyNetQ.Management.Client.Model;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -10,9 +11,9 @@ namespace RabbitModel
 {
     public class RabbitCommunicationModelBuilder
     {
-        private readonly IModel _model;
+        private readonly ManagementClient _model;
 
-        public RabbitCommunicationModelBuilder(IModel model)
+        public RabbitCommunicationModelBuilder(ManagementClient model)
         {
             _model = model;
         }
@@ -29,9 +30,10 @@ namespace RabbitModel
                 throw new ArgumentNullException(nameof(queue));
             }
 
-            _model.ExchangeDeclare(exchange, "direct", true, false, null);
-            _model.QueueDeclare(queue, true, false, false, null);
-            _model.QueueBind(queue, exchange, "", null);
+            var vhost = new Vhost() { Name = "/" };
+            var e = _model.CreateExchange(new ExchangeInfo(exchange, "direct", false, true, false, new Arguments()), vhost);
+            var q = _model.CreateQueue(new QueueInfo(queue, false, true, new InputArguments()), vhost);
+            _model.CreateBinding(e, q, new BindingInfo(""));
         }
 
         public void BuildTrackerToISContract(string exchangeToPush, string queueToStore)
@@ -46,19 +48,22 @@ namespace RabbitModel
                 throw new ArgumentNullException(nameof(queueToStore));
             }
 
-            BuildISExpectationsContract(queueToStore);
-            _model.ExchangeDeclare(exchangeToPush, "direct", true, false, null);
-            _model.QueueBind(queueToStore, exchangeToPush, "", null);
+            var vhost = new Vhost() { Name = "/" };
+            var q = BuildISExpectationsContract(queueToStore);
+            var e = _model.CreateExchange(new ExchangeInfo(exchangeToPush, "direct", false, true, false, new Arguments()), vhost);
+            _model.CreateBinding(e, q, new BindingInfo(""));
         }
 
-        public void BuildISExpectationsContract(string queueToReceiveFrom)
+        public Queue BuildISExpectationsContract(string queueToReceiveFrom)
         {
             if (string.IsNullOrWhiteSpace(queueToReceiveFrom))
             {
                 throw new ArgumentNullException(nameof(queueToReceiveFrom));
             }
 
-            _model.QueueDeclare(queueToReceiveFrom, true, false, false, null);
+            var vhost = new Vhost() { Name = "/" };
+            var q = _model.CreateQueue(new QueueInfo(queueToReceiveFrom, false, true, new InputArguments()), vhost);
+            return q;
         }
     }
 }
