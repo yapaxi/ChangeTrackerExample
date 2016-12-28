@@ -24,20 +24,23 @@ namespace IntegrationServiceExample
 
             using (var container = containerBuilder.Build())
             {
-                var rabbitModelBuilder = new RabbitCommunicationModelBuilder(container.Resolve<IModel>());
+                using (var outerScope = container.BeginLifetimeScope("outer"))
+                {
+                    var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<IModel>());
 
-                rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_1);
-                rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_2);
+                    rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_1);
+                    rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_2);
 
-                Task.WaitAll
-                (
-                    DrainQueueToConsole(IS_QUEUE_1, container),
-                    DrainQueueToConsole(IS_QUEUE_2, container)
-                );
+                    Task.WaitAll
+                    (
+                        DrainQueueToConsole(IS_QUEUE_1, outerScope),
+                        DrainQueueToConsole(IS_QUEUE_2, outerScope)
+                    );
+                }
             }
         }
         
-        private static Task DrainQueueToConsole(string queue, IContainer container)
+        private static Task DrainQueueToConsole(string queue, ILifetimeScope container)
         {
             Console.WriteLine($"Draining {queue}");
 
