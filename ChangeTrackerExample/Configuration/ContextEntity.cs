@@ -13,7 +13,7 @@ namespace ChangeTrackerExample.Configuration
         where TSourceContext : IEntityContext
         where TSource : class, IEntity
     {
-        public MappedContextEntity<TSourceContext, TSource, TTarget> Map<TTarget>(Expression<Func<TSource, TTarget>> mapper)
+        internal MappedContextEntity<TSourceContext, TSource, TTarget> Map<TTarget>(Expression<Func<TSource, TTarget>> mapper)
             where TTarget : class
         {
             return new MappedContextEntity<TSourceContext, TSource, TTarget>(mapper);

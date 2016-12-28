@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using RabbitModel;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -43,29 +44,44 @@ namespace ChangeTrackerExample
 
             using (var container = containerBuilder.Build())
             {
-                var rabcom = new RabbitCommunicationModelBuilder(container.Resolve<IModel>());
+                while (true)
+                {
+                    try
+                    {
+                        using (var outerScope = container.BeginLifetimeScope("outer"))
+                        {
+                            var rabcom = new RabbitCommunicationModelBuilder(outerScope.Resolve<IModel>());
 
-                rabcom.BuildTrackerLoopback(trackerLoopbackExchange, trackerLoopbackQueue);
-                rabcom.BuildTrackerToISContract(IS_EXCHANGE_1, IS_QUEUE_1);
-                rabcom.BuildTrackerToISContract(IS_EXCHANGE_2, IS_QUEUE_2);
+                            rabcom.BuildTrackerLoopback(trackerLoopbackExchange, trackerLoopbackQueue);
+                            rabcom.BuildTrackerToISContract(IS_EXCHANGE_1, IS_QUEUE_1);
+                            rabcom.BuildTrackerToISContract(IS_EXCHANGE_2, IS_QUEUE_2);
 
-                var listenerTask = RunLoopbackListener(container);
+                            var listenerTask = RunLoopbackListener(outerScope);
 
-                RunBlockingDebugGenerator(container);
+                            RunBlockingDebugGenerator(outerScope);
 
-                listenerTask.Wait(5000);
+                            listenerTask.Wait(5000);
+                            break;
+                        }
+                    }
+                    catch (AlreadyClosedException e)
+                    {
+                        Console.WriteLine("reconnect!");
+                    }
+                }
             }
         }
 
-        private static void RunBlockingDebugGenerator(IContainer container)
+        private static void RunBlockingDebugGenerator(ILifetimeScope outerScope)
         {
             const int CNT_PER_BATCH = 1;
             Console.WriteLine("RunDebugGenerator done");
 
-            using (var scope = container.BeginLifetimeScope())
+            var notifier = outerScope.Resolve<LoopbackNotifier>();
+
+            using (var innerScope = outerScope.BeginLifetimeScope())
             {
-                var context = scope.Resolve<SourceContext>();
-                var notifier = scope.Resolve<LoopbackNotifier>();
+                var context = innerScope.Resolve<SourceContext>();
 
                 var rnd = new Random((int)DateTime.UtcNow.Ticks);
                 var range = Enumerable.Range(0, 128).ToArray();
@@ -91,27 +107,7 @@ namespace ChangeTrackerExample
 
                     foreach (var entity in lst)
                     {
-                        while (true)
-                        {
-                            try
-                            {
-                                notifier.NotifyChanged<SomeEntity>(entity.Id);
-                                break;
-                            }
-                            catch (Exception e)
-                            {
-                                var connection = container.Resolve<IConnection>();
-                                if (!connection.IsOpen)
-                                {
-                                    Console.WriteLine(e.Message);
-                                    return;
-                                }
-                                else
-                                {
-                                    Console.WriteLine(e.Message);
-                                }
-                            }
-                        }
+                        notifier.NotifyChanged<SomeEntity>(entity.Id);
                         Console.WriteLine($"Notified for entity with id {entity.Id}");
                     }
 
@@ -121,15 +117,15 @@ namespace ChangeTrackerExample
             }
         }
 
-        private static Task RunLoopbackListener(IContainer container)
+        private static Task RunLoopbackListener(ILifetimeScope outerScope)
         {
             var cmplSource = new TaskCompletionSource<object>();
-            var listener = container.Resolve<LoopbackListener>();
+            var listener = outerScope.Resolve<LoopbackListener>();
             listener.EntityChanged += (s, o) =>
             {
-                using (var scope = container.BeginLifetimeScope())
+                using (var innerScope = outerScope.BeginLifetimeScope("inner"))
                 {
-                    var handler = scope.Resolve<ChangeHandler>();
+                    var handler = innerScope.Resolve<ChangeHandler>();
                     handler.HandleEntityChanged(o.Type, o.Id);
                 }
             };
@@ -141,26 +137,29 @@ namespace ChangeTrackerExample
         private static void RegisterDB(ContainerBuilder containerBuilder)
         {
             var sourceDBConnectionString = ConfigurationManager.ConnectionStrings["sourceDB"].ConnectionString;
-            containerBuilder.Register(e => new SourceContext(sourceDBConnectionString)).As<SourceContext>();
+            containerBuilder
+                .Register(e => new SourceContext(sourceDBConnectionString))
+                .As<SourceContext>()
+                .InstancePerLifetimeScope();
         }
         
         private static void RegisterHandlers(string loopbackExchange, string loopbackQueue, ContainerBuilder containerBuilder)
         {
+            containerBuilder.Register(e => new LoopbackListener(
+                loopbackModel: e.Resolve<IModel>(),
+                loopbackQueue: loopbackQueue
+            )).InstancePerMatchingLifetimeScope("outer");
+            
             containerBuilder.Register(e => new ChangeHandler(
                 config: e.Resolve<EntityGroupedConfig>(),
                 context: e.Resolve<SourceContext>(),
                 outputModel: e.Resolve<IModel>()
-            )).InstancePerLifetimeScope();
+            )).InstancePerMatchingLifetimeScope("inner");
 
             containerBuilder.Register(e => new LoopbackNotifier(
                 model: e.Resolve<IModel>(),
                 loopbackExchange: loopbackExchange
-            )).InstancePerLifetimeScope();
-
-            containerBuilder.Register(e => new LoopbackListener(
-                loopbackModel: e.Resolve<IModel>(),
-                loopbackQueue: loopbackQueue
-            )).SingleInstance();
+            ));
         }
 
         private static void RegisterEntities(ContainerBuilder containerBuilder)

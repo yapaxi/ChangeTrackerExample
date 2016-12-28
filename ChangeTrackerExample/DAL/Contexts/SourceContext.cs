@@ -18,6 +18,6 @@ namespace ChangeTrackerExample.DAL.Contexts
 
         public IDbSet<SomeEntity> SomeEntities { get; set; }
 
-        public IQueryable<TEntity> Get<TEntity>() where TEntity : class => Set<TEntity>().AsQueryable();
+        public IQueryable<TEntity> Get<TEntity>() where TEntity : class => Set<TEntity>();
     }
 }

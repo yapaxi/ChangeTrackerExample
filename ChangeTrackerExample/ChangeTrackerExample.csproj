@@ -77,7 +77,6 @@
     <Compile Include="Configuration\EntityProperty.cs" />
     <Compile Include="Configuration\MappedContextEntity.cs" />
     <Compile Include="Configuration\RegisteredEntity.cs" />
-    <Compile Include="Configuration\TrackerLoopbackExchange.cs" />
     <Compile Include="DAL\Contexts\IEntityContext.cs" />
     <Compile Include="DAL\Contexts\SourceContext.cs" />
     <Compile Include="Domain\IEntity.cs" />

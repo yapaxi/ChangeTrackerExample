@@ -20,14 +20,14 @@ namespace RabbitModel
         protected override void Load(ContainerBuilder builder)
         {
             builder
-                  .Register(e => new ConnectionFactory() { Uri = _rabbitUri })
-                  .As<IConnectionFactory>()
-                  .SingleInstance();
+                .Register(e => new ConnectionFactory() { Uri = _rabbitUri })
+                .As<IConnectionFactory>()
+                .InstancePerMatchingLifetimeScope("outer");
 
             builder
                 .Register(e => e.Resolve<IConnectionFactory>().CreateConnection())
                 .As<IConnection>()
-                .SingleInstance();
+                .InstancePerMatchingLifetimeScope("outer");
 
             builder
                 .Register(e => e.Resolve<IConnection>().CreateModel())
