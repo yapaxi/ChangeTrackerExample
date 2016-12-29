@@ -1,5 +1,6 @@
 ﻿using EasyNetQ;
 using EasyNetQ.Topology;
+using RabbitModel;
 using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
@@ -32,7 +33,7 @@ namespace ChangeTrackerExample.App
             properties.ContentType = "application/octet-stream";
             properties.DeliveryMode = 2;
             properties.Headers = new Dictionary<string, object>();
-            properties.Headers[Header.TYPE_HEADER] = typeof(TSource).FullName;
+            properties.Headers[LoopbackMessageHeader.MESSAGE_TYPE] = typeof(TSource).FullName;
             return properties;
         }
     }

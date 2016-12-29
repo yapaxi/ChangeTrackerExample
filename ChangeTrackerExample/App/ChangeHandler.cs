@@ -6,6 +6,7 @@ using EasyNetQ;
 using EasyNetQ.NonGeneric;
 using EasyNetQ.Topology;
 using Newtonsoft.Json;
+using RabbitModel;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
@@ -48,10 +49,11 @@ namespace ChangeTrackerExample.App
                 properties.ContentType = "application/json";
                 properties.DeliveryMode = 2;
                 properties.Headers = new Dictionary<string, object>();
-                properties.Headers["schema"] = config.Entity.SerializedTargetTypeSchema;
-                properties.Headers["schema-format-version"] = config.Entity.SchemaFormatVersion;
-                properties.Headers["schema-gen-utc"] = config.Entity.TargetTypeSchemaGeneratedDateUTC.ToString("yyyy-MM-ddTHH:mm:ssZ");
-                properties.Headers["schema-checksum"] = config.Entity.SerializedTargetTypeSchemaChecksum;
+                properties.Headers[ISMessageHeader.SCHEMA] = config.Entity.SerializedTargetTypeSchema;
+                properties.Headers[ISMessageHeader.SCHEMA_FORMAT_VERSION] = config.Entity.SchemaFormatVersion;
+                properties.Headers[ISMessageHeader.SCHEMA_GEN_UTC] = config.Entity.TargetTypeSchemaGeneratedDateUTC.ToString("yyyy-MM-ddTHH:mm:ssZ");
+                properties.Headers[ISMessageHeader.SCHEMA_CHECKSUM] = config.Entity.SerializedTargetTypeSchemaChecksum;
+                properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID] = id;
 
                 var json = JsonConvert.SerializeObject(mappedEntity);
                 var bytes = GetBytes(json);

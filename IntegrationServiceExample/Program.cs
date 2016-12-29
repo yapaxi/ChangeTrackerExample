@@ -48,18 +48,18 @@ namespace IntegrationServiceExample
             var cmplSource = new TaskCompletionSource<object>();
             var bus = container.Resolve<IBus>();
 
-            bus.Advanced.Consume(queue, (b, p, i) => WriteMessageToConsole(i));
+            bus.Advanced.Consume(queue, (b, p, a) => WriteMessageToConsole(b, p, a));
 
             return cmplSource.Task;
         }
 
         private static readonly object LOCK = new object();
 
-        private static void WriteMessageToConsole(MessageReceivedInfo args)
+        private static void WriteMessageToConsole(byte[] body, MessageProperties p, MessageReceivedInfo args)
         {
             lock (LOCK)
             {
-                Console.WriteLine($"Got message from {args.Exchange}");
+                Console.WriteLine($"Got message from {args.Exchange}: {p.Headers[ISMessageHeader.SCHEMA_ENTITY_ID]}");
             }
         }
     }

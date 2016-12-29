@@ -72,7 +72,6 @@
   <ItemGroup>
     <Compile Include="App\ChangeHandler.cs" />
     <Compile Include="App\EntityChangedEventArgs.cs" />
-    <Compile Include="App\Header.cs" />
     <Compile Include="App\LoopbackListener.cs" />
     <Compile Include="App\LoopbackNotifier.cs" />
     <Compile Include="Configuration\ChangeTrackerBuilder.cs" />

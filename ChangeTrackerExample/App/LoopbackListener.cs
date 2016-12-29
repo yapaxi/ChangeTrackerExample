@@ -1,5 +1,6 @@
 ﻿using EasyNetQ;
 using EasyNetQ.Topology;
+using RabbitModel;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
@@ -18,7 +19,6 @@ namespace ChangeTrackerExample.App
         private IDisposable _subscription;
 
         public event EventHandler<EntityChangedEventArgs> EntityChanged;
-        public event EventHandler<EventArgs> Cancelled;
 
         public LoopbackListener(IBus bus, IQueue queue)
         {
@@ -53,7 +53,7 @@ namespace ChangeTrackerExample.App
 
         private void HandleEntityChangedMessage(MessageProperties properties, byte[] body)
         {
-            var type = Encoding.UTF8.GetString((byte[])properties.Headers[Header.TYPE_HEADER]);
+            var type = Encoding.UTF8.GetString((byte[])properties.Headers[LoopbackMessageHeader.MESSAGE_TYPE]);
             EntityChanged.Invoke(this, new EntityChangedEventArgs(BitConverter.ToInt32(body, 0), type));
         }
 

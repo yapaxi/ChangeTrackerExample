@@ -50,11 +50,8 @@ namespace ChangeTrackerExample
                 rabcom.BuildTrackerToISContract(IS_EXCHANGE_1, IS_QUEUE_1);
                 rabcom.BuildTrackerToISContract(IS_EXCHANGE_2, IS_QUEUE_2);
 
-                var listenerTask = RunLoopbackListener(scope);
-
+                RunLoopbackListener(scope);
                 RunBlockingDebugGenerator(scope);
-
-                listenerTask.Wait(5000);
             }
         }
 
@@ -97,15 +94,14 @@ namespace ChangeTrackerExample
                         Console.WriteLine($"Notified for entity with id {entity.Id}");
                     }
 
-               //     Thread.Sleep(200);
+          //          Thread.Sleep(200);
                 }
 
             }
         }
 
-        private static Task RunLoopbackListener(ILifetimeScope outerScope)
+        private static void RunLoopbackListener(ILifetimeScope outerScope)
         {
-            var cmplSource = new TaskCompletionSource<object>();
             var listener = outerScope.Resolve<LoopbackListener>();
             listener.EntityChanged += (s, o) =>
             {
@@ -115,9 +111,7 @@ namespace ChangeTrackerExample
                     handler.HandleEntityChanged(o.Type, o.Id);
                 }
             };
-            listener.Cancelled += (s, o) => cmplSource.SetCanceled();
             listener.Start();
-            return cmplSource.Task;
         }
 
         private static void RegisterDB(ContainerBuilder containerBuilder)

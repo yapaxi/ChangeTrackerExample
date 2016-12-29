@@ -28,7 +28,7 @@ namespace RabbitModel
             builder
                 .Register(e => RabbitHutch.CreateBus(_connectionString))
                 .As<IBus>()
-                .InstancePerLifetimeScope();
+                .SingleInstance();
 
             base.Load(builder);
         }
