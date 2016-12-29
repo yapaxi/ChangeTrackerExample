@@ -1,4 +1,6 @@
-﻿using RabbitMQ.Client;
+﻿using EasyNetQ;
+using EasyNetQ.Topology;
+using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,24 +11,24 @@ namespace ChangeTrackerExample.App
 {
     public class LoopbackNotifier
     {
-        private readonly string _loopbackExchange;
-        private readonly IModel _model;
+        private readonly IExchange _exchange;
+        private readonly IBus _bus;
 
-        public LoopbackNotifier(IModel model, string loopbackExchange)
+        public LoopbackNotifier(IBus bus, IExchange exchange)
         {
-            _model = model;
-            _loopbackExchange = loopbackExchange;
+            _bus = bus;
+            _exchange = exchange;
         }
 
         public void NotifyChanged<TSource>(int id)
         {
             var properties = CreateProperties<TSource>();
-            _model.BasicPublish(_loopbackExchange, "", properties, BitConverter.GetBytes(id));
+            _bus.Advanced.Publish(_exchange, "", false, properties, BitConverter.GetBytes(id));
         }
 
-        private IBasicProperties CreateProperties<TSource>()
+        private MessageProperties CreateProperties<TSource>()
         {
-            var properties = _model.CreateBasicProperties();
+            var properties = new MessageProperties();
             properties.ContentType = "application/octet-stream";
             properties.DeliveryMode = 2;
             properties.Headers = new Dictionary<string, object>();

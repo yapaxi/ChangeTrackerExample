@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using ChangeTrackerExample.DAL.Contexts;
+using EasyNetQ.Topology;
 
 namespace ChangeTrackerExample.Configuration
 {
@@ -28,16 +29,16 @@ namespace ChangeTrackerExample.Configuration
 
         public void RegisterDestination(
             IBoundedMappedEntity entitySource,
-            string targetExchange,
+            IExchange exchange,
             bool allowComplexObjects
         )
         {
             if (!allowComplexObjects && entitySource.TargetTypeSchema.Any(e => e.Children.Any()))
             {
-                throw new Exception($"Complex objects are not allowed for echange {targetExchange}");
+                throw new Exception($"Complex objects are not allowed for echange {exchange.Name}");
             }
 
-            _configs.Add(new EntityConfig(entitySource, targetExchange));
+            _configs.Add(new EntityConfig(entitySource, exchange));
         }
 
         public void Build()

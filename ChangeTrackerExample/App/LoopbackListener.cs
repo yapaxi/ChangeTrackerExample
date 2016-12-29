@@ -1,4 +1,6 @@
-﻿using RabbitMQ.Client;
+﻿using EasyNetQ;
+using EasyNetQ.Topology;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
@@ -8,24 +10,20 @@ using System.Threading.Tasks;
 
 namespace ChangeTrackerExample.App
 {
-    public class LoopbackListener
+    public class LoopbackListener : IDisposable
     {
-        private readonly IModel _model;
-        private readonly string _loopbackQueue;
-        private readonly EventingBasicConsumer _consumer;
+        private readonly IBus _bus;
+        private readonly IQueue _queue;
 
-        private string _consumerTag;
+        private IDisposable _subscription;
 
         public event EventHandler<EntityChangedEventArgs> EntityChanged;
         public event EventHandler<EventArgs> Cancelled;
 
-        public LoopbackListener(IModel loopbackModel, string loopbackQueue)
+        public LoopbackListener(IBus bus, IQueue queue)
         {
-            _model = loopbackModel;
-            _loopbackQueue = loopbackQueue;
-            _consumer = new EventingBasicConsumer(_model);
-            _consumer.Received += HandleEntityChangedMessage;
-            _consumer.ConsumerCancelled += (s, o) => Cancelled?.Invoke(this, o);
+            _bus = bus;
+            _queue = queue;
         }
 
         public void Start()
@@ -35,29 +33,34 @@ namespace ChangeTrackerExample.App
                 throw new InvalidOperationException($"No one listens for {nameof(LoopbackListener)}'s {nameof(EntityChanged)} event");
             }
 
-            if (_consumerTag != null)
+            if (_subscription != null)
             {
-                throw new InvalidOperationException("Consumer is already listening");
+                throw new InvalidOperationException("Listener is already started");
             }
 
-            _consumerTag = _model.BasicConsume(_loopbackQueue, false, _consumer);
+            _subscription = _bus.Advanced.Consume(_queue, (b, m, i) => HandleEntityChangedMessage(m, b));
         }
 
         public void Cancel()
         {
-            if (_consumerTag != null)
+            if (_subscription != null)
             {
-                throw new InvalidOperationException("Nothing to cancel: no consumer tag found");
+                throw new InvalidOperationException("Nothing to cancel: no subscription found");
             }
-            
-            _model.BasicCancel(_consumerTag);
+
+            Dispose();
         }
 
-        private void HandleEntityChangedMessage(object sender, BasicDeliverEventArgs obj)
+        private void HandleEntityChangedMessage(MessageProperties properties, byte[] body)
         {
-            var type = Encoding.UTF8.GetString((byte[])obj.BasicProperties.Headers[Header.TYPE_HEADER]);
-            EntityChanged.Invoke(this, new EntityChangedEventArgs(BitConverter.ToInt32(obj.Body, 0), type));
-            ((IBasicConsumer)sender).Model.BasicAck(obj.DeliveryTag, false);
+            var type = Encoding.UTF8.GetString((byte[])properties.Headers[Header.TYPE_HEADER]);
+            EntityChanged.Invoke(this, new EntityChangedEventArgs(BitConverter.ToInt32(body, 0), type));
+        }
+
+        public void Dispose()
+        {
+            _subscription?.Dispose();
+            _subscription = null;
         }
     }
 }

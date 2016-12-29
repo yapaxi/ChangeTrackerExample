@@ -1,14 +1,14 @@
 ﻿using Autofac;
-using EasyNetQ.Management.Client;
+using EasyNetQ;
+using EasyNetQ.NonGeneric;
 using RabbitModel;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EasyNetQ.Topology;
 
 namespace IntegrationServiceExample
 {
@@ -25,41 +25,37 @@ namespace IntegrationServiceExample
 
             using (var container = containerBuilder.Build())
             {
-                using (var outerScope = container.BeginLifetimeScope("outer"))
+                using (var outerScope = container.BeginLifetimeScope())
                 {
-                    var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<ManagementClient>());
+                    var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<IBus>().Advanced);
 
-                    rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_1);
-                    rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_2);
+                    var queue1 = rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_1);
+                    var queue2 = rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_2);
 
                     Task.WaitAll
                     (
-                        DrainQueueToConsole(IS_QUEUE_1, outerScope),
-                        DrainQueueToConsole(IS_QUEUE_2, outerScope)
+                        DrainQueueToConsole(queue1, outerScope),
+                        DrainQueueToConsole(queue2, outerScope)
                     );
                 }
             }
         }
         
-        private static Task DrainQueueToConsole(string queue, ILifetimeScope container)
+        private static Task DrainQueueToConsole(IQueue queue, ILifetimeScope container)
         {
-            Console.WriteLine($"Draining {queue}");
+            Console.WriteLine($"Draining {queue.Name}");
 
             var cmplSource = new TaskCompletionSource<object>();
-            var connection = container.Resolve<IConnection>();
+            var bus = container.Resolve<IBus>();
 
-            var model = connection.CreateModel();
-            var consoleConsumer1 = new EventingBasicConsumer(model);
-            consoleConsumer1.Received += (s, o) => WriteMessageToConsole(o);
-            consoleConsumer1.ConsumerCancelled += (s, o) => cmplSource.TrySetCanceled();
-            model.BasicConsume(queue, true, consoleConsumer1);
+            bus.Advanced.Consume(queue, (b, p, i) => WriteMessageToConsole(i));
 
             return cmplSource.Task;
         }
 
         private static readonly object LOCK = new object();
 
-        private static void WriteMessageToConsole(BasicDeliverEventArgs args)
+        private static void WriteMessageToConsole(MessageReceivedInfo args)
         {
             lock (LOCK)
             {

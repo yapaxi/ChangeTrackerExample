@@ -2,6 +2,9 @@
 using ChangeTrackerExample.Configuration;
 using ChangeTrackerExample.DAL.Contexts;
 using ChangeTrackerExample.Domain;
+using EasyNetQ;
+using EasyNetQ.NonGeneric;
+using EasyNetQ.Topology;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -17,13 +20,13 @@ namespace ChangeTrackerExample.App
     {
         private readonly EntityGroupedConfig _config;
         private readonly IEntityContext _context;
-        private readonly IModel _outputModel;
+        private readonly IBus _bus;
 
-        public ChangeHandler(EntityGroupedConfig config, IEntityContext context, IModel outputModel)
+        public ChangeHandler(EntityGroupedConfig config, IEntityContext context, IBus bus)
         {
             _config = config;
             _context = context;
-            _outputModel = outputModel;
+            _bus = bus;
         }
         
         public void HandleEntityChanged(string entityTypeFullName, int id)
@@ -37,12 +40,11 @@ namespace ChangeTrackerExample.App
 
                 if (mappedEntity == null)
                 {
-                    throw new Exception($"Entity \"{config.Entity.SourceType}\" with id {id} received from {config.TargetExchangeFQN} not found in context {config.Entity.ContextType}");
+                    throw new Exception($"Entity \"{config.Entity.SourceType}\" with id {id} received from {config.Exchange} not found in context {config.Entity.ContextType}");
                 }
 
-                var json = JsonConvert.SerializeObject(mappedEntity);
-
-                var properties = _outputModel.CreateBasicProperties();
+                
+                var properties = new MessageProperties();
                 properties.ContentType = "application/json";
                 properties.DeliveryMode = 2;
                 properties.Headers = new Dictionary<string, object>();
@@ -51,8 +53,10 @@ namespace ChangeTrackerExample.App
                 properties.Headers["schema-gen-utc"] = config.Entity.TargetTypeSchemaGeneratedDateUTC.ToString("yyyy-MM-ddTHH:mm:ssZ");
                 properties.Headers["schema-checksum"] = config.Entity.SerializedTargetTypeSchemaChecksum;
 
+                var json = JsonConvert.SerializeObject(mappedEntity);
                 var bytes = GetBytes(json);
-                _outputModel.BasicPublish(config.TargetExchangeFQN, "", properties, bytes);
+
+                _bus.Advanced.Publish(config.Exchange, "", false, properties, bytes);
             }
         }
 

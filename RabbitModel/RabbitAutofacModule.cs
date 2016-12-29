@@ -4,36 +4,39 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Autofac;
-using RabbitMQ.Client;
+using EasyNetQ;
 
 namespace RabbitModel
 {
-    public class RabbitAutofacModule : Autofac.Module
+    public class RabbitAutofacModule : Module
     {
-        private readonly string _rabbitUri;
+        private readonly string _connectionString;
 
-        public RabbitAutofacModule(string rabbitUri)
+        private readonly IReadOnlyDictionary<string, string> _parsedConnectionString;
+
+        public RabbitAutofacModule(string connectionString)
         {
-            _rabbitUri = rabbitUri;
+            _connectionString = connectionString;
+            _parsedConnectionString = 
+                _connectionString.Split(';')
+                .Select(e => e.Split('='))
+                .ToDictionary(e => e[0].Trim(), e => e[1].Trim());
         }
 
         protected override void Load(ContainerBuilder builder)
         {
             builder
-                .Register(e => new ConnectionFactory() { Uri = _rabbitUri })
-                .As<IConnectionFactory>()
-                .InstancePerMatchingLifetimeScope("outer");
-
-            builder
-                .Register(e => e.Resolve<IConnectionFactory>().CreateConnection())
-                .As<IConnection>()
-                .InstancePerMatchingLifetimeScope("outer");
-
-            builder
-                .Register(e => e.Resolve<IConnection>().CreateModel())
-                .As<IModel>();
+                .Register(e => RabbitHutch.CreateBus(_connectionString))
+                .As<IBus>()
+                .InstancePerLifetimeScope();
 
             base.Load(builder);
+        }
+
+        private string GetOrNull(string key)
+        {
+            string val;
+            return _parsedConnectionString.TryGetValue(key, out val) ? val : null;
         }
     }
 }

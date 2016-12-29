@@ -3,12 +3,11 @@ using ChangeTrackerExample.App;
 using ChangeTrackerExample.Configuration;
 using ChangeTrackerExample.DAL.Contexts;
 using ChangeTrackerExample.Domain;
+using EasyNetQ;
+using EasyNetQ.Topology;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RabbitModel;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-using RabbitMQ.Client.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -39,36 +38,23 @@ namespace ChangeTrackerExample
             containerBuilder.RegisterModule(new RabbitAutofacModule(RABBIT_URI));
 
             RegisterDB(containerBuilder);
-            RegisterEntities(containerBuilder);
+            RegisterEntities(new Exchange(IS_EXCHANGE_1), new Exchange(IS_EXCHANGE_2), containerBuilder);
             RegisterHandlers(trackerLoopbackExchange, trackerLoopbackQueue, containerBuilder);
 
             using (var container = containerBuilder.Build())
+            using (var scope = container.BeginLifetimeScope())
             {
-                while (true)
-                {
-                    try
-                    {
-                        using (var outerScope = container.BeginLifetimeScope("outer"))
-                        {
-                            var rabcom = new RabbitCommunicationModelBuilder(outerScope.Resolve<IModel>());
+                var rabcom = new RabbitCommunicationModelBuilder(scope.Resolve<IBus>().Advanced);
 
-                            rabcom.BuildTrackerLoopback(trackerLoopbackExchange, trackerLoopbackQueue);
-                            rabcom.BuildTrackerToISContract(IS_EXCHANGE_1, IS_QUEUE_1);
-                            rabcom.BuildTrackerToISContract(IS_EXCHANGE_2, IS_QUEUE_2);
+                rabcom.BuildTrackerLoopback(trackerLoopbackExchange, trackerLoopbackQueue);
+                rabcom.BuildTrackerToISContract(IS_EXCHANGE_1, IS_QUEUE_1);
+                rabcom.BuildTrackerToISContract(IS_EXCHANGE_2, IS_QUEUE_2);
 
-                            var listenerTask = RunLoopbackListener(outerScope);
+                var listenerTask = RunLoopbackListener(scope);
 
-                            RunBlockingDebugGenerator(outerScope);
+                RunBlockingDebugGenerator(scope);
 
-                            listenerTask.Wait(5000);
-                            break;
-                        }
-                    }
-                    catch (AlreadyClosedException e)
-                    {
-                        Console.WriteLine("reconnect!");
-                    }
-                }
+                listenerTask.Wait(5000);
             }
         }
 
@@ -111,7 +97,7 @@ namespace ChangeTrackerExample
                         Console.WriteLine($"Notified for entity with id {entity.Id}");
                     }
 
-                    Thread.Sleep(200);
+               //     Thread.Sleep(200);
                 }
 
             }
@@ -123,7 +109,7 @@ namespace ChangeTrackerExample
             var listener = outerScope.Resolve<LoopbackListener>();
             listener.EntityChanged += (s, o) =>
             {
-                using (var innerScope = outerScope.BeginLifetimeScope("inner"))
+                using (var innerScope = outerScope.BeginLifetimeScope())
                 {
                     var handler = innerScope.Resolve<ChangeHandler>();
                     handler.HandleEntityChanged(o.Type, o.Id);
@@ -146,23 +132,27 @@ namespace ChangeTrackerExample
         private static void RegisterHandlers(string loopbackExchange, string loopbackQueue, ContainerBuilder containerBuilder)
         {
             containerBuilder.Register(e => new LoopbackListener(
-                loopbackModel: e.Resolve<IModel>(),
-                loopbackQueue: loopbackQueue
-            )).InstancePerMatchingLifetimeScope("outer");
+                bus: e.Resolve<IBus>(),
+                queue: new Queue(loopbackQueue, false)
+            )).InstancePerLifetimeScope();
             
             containerBuilder.Register(e => new ChangeHandler(
                 config: e.Resolve<EntityGroupedConfig>(),
                 context: e.Resolve<SourceContext>(),
-                outputModel: e.Resolve<IModel>()
-            )).InstancePerMatchingLifetimeScope("inner");
+                bus: e.Resolve<IBus>()
+            )).InstancePerLifetimeScope();
 
             containerBuilder.Register(e => new LoopbackNotifier(
-                model: e.Resolve<IModel>(),
-                loopbackExchange: loopbackExchange
+                bus: e.Resolve<IBus>(),
+                exchange: new Exchange(loopbackExchange)
             ));
         }
 
-        private static void RegisterEntities(ContainerBuilder containerBuilder)
+        private static void RegisterEntities(
+            IExchange exchange1,
+            IExchange exchange2,
+            ContainerBuilder containerBuilder
+        )
         {
             var entityBuilder = new EntityBuilder(containerBuilder);
             var entity = entityBuilder.Entity<SomeEntity>().FromContext<SourceContext>();
@@ -184,10 +174,10 @@ namespace ChangeTrackerExample
                 Complex = new { e.Int32, e.Int64 }
             });
 
-            entityBuilder.RegisterDestination(entityMapping1, IS_EXCHANGE_1, false);
-            entityBuilder.RegisterDestination(entityMapping1, IS_EXCHANGE_2, true);
+            entityBuilder.RegisterDestination(entityMapping1, exchange1, false);
+            entityBuilder.RegisterDestination(entityMapping1, exchange2, true);
 
-            entityBuilder.RegisterDestination(entityMapping2, IS_EXCHANGE_2, true);
+            entityBuilder.RegisterDestination(entityMapping2, exchange2, true);
 
             entityBuilder.Build();
         }

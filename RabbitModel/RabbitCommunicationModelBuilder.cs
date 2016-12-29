@@ -1,5 +1,6 @@
-﻿using EasyNetQ.Management.Client;
-using EasyNetQ.Management.Client.Model;
+﻿using EasyNetQ;
+using EasyNetQ.Topology;
+using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -11,11 +12,11 @@ namespace RabbitModel
 {
     public class RabbitCommunicationModelBuilder
     {
-        private readonly ManagementClient _model;
+        private readonly IAdvancedBus _advancedBus;
 
-        public RabbitCommunicationModelBuilder(ManagementClient model)
+        public RabbitCommunicationModelBuilder(IAdvancedBus model)
         {
-            _model = model;
+            _advancedBus = model;
         }
 
         public void BuildTrackerLoopback(string exchange, string queue)
@@ -30,13 +31,12 @@ namespace RabbitModel
                 throw new ArgumentNullException(nameof(queue));
             }
 
-            var vhost = new Vhost() { Name = "/" };
-            var e = _model.CreateExchange(new ExchangeInfo(exchange, "direct", false, true, false, new Arguments()), vhost);
-            var q = _model.CreateQueue(new QueueInfo(queue, false, true, new InputArguments()), vhost);
-            _model.CreateBinding(e, q, new BindingInfo(""));
+            var e = _advancedBus.ExchangeDeclare(exchange, "direct", durable: true);
+            var q = _advancedBus.QueueDeclare(queue, durable: true);
+            _advancedBus.Bind(e, q, "");
         }
 
-        public void BuildTrackerToISContract(string exchangeToPush, string queueToStore)
+        public IExchange BuildTrackerToISContract(string exchangeToPush, string queueToStore)
         {
             if (string.IsNullOrWhiteSpace(exchangeToPush))
             {
@@ -48,22 +48,20 @@ namespace RabbitModel
                 throw new ArgumentNullException(nameof(queueToStore));
             }
 
-            var vhost = new Vhost() { Name = "/" };
             var q = BuildISExpectationsContract(queueToStore);
-            var e = _model.CreateExchange(new ExchangeInfo(exchangeToPush, "direct", false, true, false, new Arguments()), vhost);
-            _model.CreateBinding(e, q, new BindingInfo(""));
+            var e = _advancedBus.ExchangeDeclare(exchangeToPush, "direct", durable: true);
+            _advancedBus.Bind(e, q, "");
+            return e;
         }
 
-        public Queue BuildISExpectationsContract(string queueToReceiveFrom)
+        public IQueue BuildISExpectationsContract(string queueToReceiveFrom)
         {
             if (string.IsNullOrWhiteSpace(queueToReceiveFrom))
             {
                 throw new ArgumentNullException(nameof(queueToReceiveFrom));
             }
 
-            var vhost = new Vhost() { Name = "/" };
-            var q = _model.CreateQueue(new QueueInfo(queueToReceiveFrom, false, true, new InputArguments()), vhost);
-            return q;
+            return _advancedBus.QueueDeclare(queueToReceiveFrom, durable: true);
         }
     }
 }
