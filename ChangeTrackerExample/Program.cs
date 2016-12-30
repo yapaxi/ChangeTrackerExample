@@ -3,6 +3,7 @@ using ChangeTrackerExample.App;
 using ChangeTrackerExample.Configuration;
 using ChangeTrackerExample.DAL.Contexts;
 using ChangeTrackerExample.Domain;
+using Common;
 using EasyNetQ;
 using EasyNetQ.Topology;
 using Newtonsoft.Json;
@@ -23,11 +24,6 @@ namespace ChangeTrackerExample
     {
         private static readonly string RABBIT_URI = ConfigurationManager.ConnectionStrings["rabbitUri"].ConnectionString;
 
-        private static readonly string IS_EXCHANGE_1 = ConfigurationManager.ConnectionStrings["ISExchange1"].ConnectionString;
-        private static readonly string IS_EXCHANGE_2 = ConfigurationManager.ConnectionStrings["ISExchange2"].ConnectionString;
-        private static readonly string IS_QUEUE_1 = ConfigurationManager.ConnectionStrings["ISQueue1"].ConnectionString;
-        private static readonly string IS_QUEUE_2 = ConfigurationManager.ConnectionStrings["ISQueue2"].ConnectionString;
-
         public static void Main(string[] args)
         {
             var trackerLoopbackExchange = ConfigurationManager.ConnectionStrings["CTLoopbackExchange"].ConnectionString;
@@ -38,7 +34,7 @@ namespace ChangeTrackerExample
             containerBuilder.RegisterModule(new RabbitAutofacModule(RABBIT_URI));
 
             RegisterDB(containerBuilder);
-            RegisterEntities(new Exchange(IS_EXCHANGE_1), new Exchange(IS_EXCHANGE_2), containerBuilder);
+            RegisterEntitiesAndDestinations(containerBuilder);
             RegisterHandlers(trackerLoopbackExchange, trackerLoopbackQueue, containerBuilder);
 
             using (var container = containerBuilder.Build())
@@ -47,9 +43,12 @@ namespace ChangeTrackerExample
                 var rabcom = new RabbitCommunicationModelBuilder(scope.Resolve<IBus>().Advanced);
 
                 rabcom.BuildTrackerLoopback(trackerLoopbackExchange, trackerLoopbackQueue);
-                rabcom.BuildTrackerToISContract(IS_EXCHANGE_1, IS_QUEUE_1);
-                rabcom.BuildTrackerToISContract(IS_EXCHANGE_2, IS_QUEUE_2);
 
+                foreach (var config in scope.Resolve<IEnumerable<EntityConfig>>())
+                {
+                    rabcom.BuildTrackerToISContract(config.Destination.Name);
+                }
+                
                 RunLoopbackListener(scope);
                 RunBlockingDebugGenerator(scope);
             }
@@ -86,15 +85,11 @@ namespace ChangeTrackerExample
 
                     context.SaveChanges();
 
-                    Console.WriteLine($"Sync {lst.Count}");
-
                     foreach (var entity in lst)
                     {
                         notifier.NotifyChanged<SomeEntity>(entity.Id);
                         Console.WriteLine($"Notified for entity with id {entity.Id}");
                     }
-
-          //          Thread.Sleep(200);
                 }
 
             }
@@ -141,37 +136,44 @@ namespace ChangeTrackerExample
                 exchange: new Exchange(loopbackExchange)
             ));
         }
-
-        private static void RegisterEntities(
-            IExchange exchange1,
-            IExchange exchange2,
-            ContainerBuilder containerBuilder
-        )
+        
+        private static void RegisterEntitiesAndDestinations(ContainerBuilder containerBuilder)
         {
             var entityBuilder = new EntityBuilder(containerBuilder);
             var entity = entityBuilder.Entity<SomeEntity>().FromContext<SourceContext>();
-            var entityMapping1 = entity.Map(e => new
-            {
-                Id = e.Id,
-                Guid = e.Guid,
-                Int32 = e.Int32,
-                Int64 = e.Int64,
-                YYY = e.MaxString,
-                XXX = e.ShortString
-            });
 
-            var entityMapping2 = entity.Map(e => new
-            {
-                Id = e.Id,
-                Guid = e.Guid,
-                YYY = e.MaxString,
-                Complex = new { e.Int32, e.Int64 }
-            });
+            var entityXXX = entity.Map
+            (
+                name: "some-entity", 
+                mapper: e => new
+                {
+                    Id = e.Id,
+                    Guid = e.Guid,
+                    Int32 = e.Int32,
+                    Int64 = e.Int64,
+                    YYY = e.MaxString,
+                    XXX = e.ShortString
+                }
+            );
 
-            entityBuilder.RegisterDestination(entityMapping1, exchange1, false);
-            entityBuilder.RegisterDestination(entityMapping1, exchange2, true);
+            var entityYYY = entity.Map
+            (
+                name: "some-entity",
+                mapper: e => new
+                {
+                    Id = e.Id,
+                    Guid = e.Guid,
+                    YYY = e.MaxString,
+                    Complex = new { e.Int32, e.Int64 }
+                }
+            );
+            
+            var root = entityBuilder.DestinationRoot("example-ms");
+            var search = root.ComplexObjectsAllowed().Prefixed("search");
+            var reporting = root.Prefixed("reporting");
 
-            entityBuilder.RegisterDestination(entityMapping2, exchange2, true);
+            entityBuilder.MapEntityToDestination(entityXXX, reporting);
+            entityBuilder.MapEntityToDestination(entityYYY, search);
 
             entityBuilder.Build();
         }

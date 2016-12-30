@@ -19,49 +19,39 @@ namespace RabbitModel
             _advancedBus = model;
         }
 
-        public void BuildTrackerLoopback(string exchange, string queue)
+        public void BuildTrackerLoopback(string inputName, string outputName)
         {
-            if (string.IsNullOrWhiteSpace(exchange))
+            if (string.IsNullOrWhiteSpace(inputName))
             {
-                throw new ArgumentNullException(nameof(exchange));
+                throw new ArgumentNullException(nameof(inputName));
             }
 
-            if (string.IsNullOrWhiteSpace(queue))
-            {
-                throw new ArgumentNullException(nameof(queue));
-            }
-
-            var e = _advancedBus.ExchangeDeclare(exchange, "direct", durable: true);
-            var q = _advancedBus.QueueDeclare(queue, durable: true);
+            var e = _advancedBus.ExchangeDeclare(inputName, "direct", durable: true);
+            var q = _advancedBus.QueueDeclare(outputName, durable: true);
             _advancedBus.Bind(e, q, "");
         }
 
-        public IExchange BuildTrackerToISContract(string exchangeToPush, string queueToStore)
+        public IExchange BuildTrackerToISContract(string inputName)
         {
-            if (string.IsNullOrWhiteSpace(exchangeToPush))
+            if (string.IsNullOrWhiteSpace(inputName))
             {
-                throw new ArgumentNullException(nameof(exchangeToPush));
+                throw new ArgumentNullException(nameof(inputName));
             }
 
-            if (string.IsNullOrWhiteSpace(queueToStore))
-            {
-                throw new ArgumentNullException(nameof(queueToStore));
-            }
-
-            var q = BuildISExpectationsContract(queueToStore);
-            var e = _advancedBus.ExchangeDeclare(exchangeToPush, "direct", durable: true);
+            var q = BuildISExpectationsContract(inputName);
+            var e = _advancedBus.ExchangeDeclare(inputName, "direct", durable: true);
             _advancedBus.Bind(e, q, "");
             return e;
         }
 
-        public IQueue BuildISExpectationsContract(string queueToReceiveFrom)
+        public IQueue BuildISExpectationsContract(string trackerInput)
         {
-            if (string.IsNullOrWhiteSpace(queueToReceiveFrom))
+            if (string.IsNullOrWhiteSpace(trackerInput))
             {
-                throw new ArgumentNullException(nameof(queueToReceiveFrom));
+                throw new ArgumentNullException(nameof(trackerInput));
             }
 
-            return _advancedBus.QueueDeclare(queueToReceiveFrom, durable: true);
+            return _advancedBus.QueueDeclare($"{trackerInput}.queue", durable: true);
         }
     }
 }

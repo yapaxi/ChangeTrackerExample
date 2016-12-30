@@ -1,5 +1,7 @@
-﻿using ChangeTrackerExample.DAL.Contexts;
+﻿using ChangeTrackerExample.Configuration;
+using ChangeTrackerExample.DAL.Contexts;
 using ChangeTrackerExample.Domain;
+using Common;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -23,16 +25,16 @@ namespace ChangeTrackerExample.Configuration
 
         public Expression<Func<TSource, TTarget>> Mapper { get; }
 
-        internal MappedContextEntity(Expression<Func<TSource, TTarget>> mapper)
+        public string Name { get; }
+
+        internal MappedContextEntity(string name, Expression<Func<TSource, TTarget>> mapper)
         {
             _md5 = MD5.Create();
             Mapper = mapper;
             TargetType = typeof(TTarget);
             TargetTypeSchema = GetTypeSchema(typeof(TTarget));
-            SerializedTargetTypeSchema = JsonConvert.SerializeObject(TargetTypeSchema);
-            SerializedTargetTypeSchemaChecksum = GetMD5(SerializedTargetTypeSchema);
-            TargetTypeSchemaGeneratedDateUTC = DateTime.UtcNow;
-            SchemaFormatVersion = EntityProperty.VERSION;
+            SchemaChecksum = GetMD5(JsonConvert.SerializeObject(TargetTypeSchema, Formatting.None));
+            Name = name;
         }
 
         public async Task<object> GetAndMapByIdAsync(IEntityContext context, int id)
@@ -101,32 +103,24 @@ namespace ChangeTrackerExample.Configuration
         }
 
         #region IBoundedMappedEntity
-
-        public Guid Id { get; } = Guid.NewGuid();
-
+        
         public Type ContextType => typeof(TSourceContext);
         public Type SourceType => typeof(TSource);
         public Type TargetType { get; }
 
         public IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
-        public string SerializedTargetTypeSchema { get; }
-        public long SerializedTargetTypeSchemaChecksum { get; }
-        public long SchemaFormatVersion { get; }
-        public DateTime TargetTypeSchemaGeneratedDateUTC { get; }
+        public long SchemaChecksum { get; }
 
         #endregion
     }
 
     public interface IBoundedMappedEntity
     {
-        Guid Id { get; }
+        string Name { get; }
         Type SourceType { get; }
         Type TargetType { get; }
         IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
-        string SerializedTargetTypeSchema { get; }
-        long SerializedTargetTypeSchemaChecksum { get; }
-        long SchemaFormatVersion { get; }
-        DateTime TargetTypeSchemaGeneratedDateUTC { get; }
+        long SchemaChecksum { get; }
         Type ContextType { get; }
 
         Task<object> GetAndMapByIdAsync(IEntityContext context, int id);

@@ -13,9 +13,6 @@ namespace RabbitModel
 
     public static class ISMessageHeader
     {
-        public static readonly string SCHEMA = "schema";
-        public static readonly string SCHEMA_FORMAT_VERSION = "schema-format-version";
-        public static readonly string SCHEMA_GEN_UTC = "schema-gen-utc";
         public static readonly string SCHEMA_CHECKSUM = "schema-checksum";
         public static readonly string SCHEMA_ENTITY_ID = "entity-id";
     }

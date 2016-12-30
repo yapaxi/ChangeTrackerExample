@@ -41,24 +41,20 @@ namespace ChangeTrackerExample.App
 
                 if (mappedEntity == null)
                 {
-                    throw new Exception($"Entity \"{config.Entity.SourceType}\" with id {id} received from {config.Exchange} not found in context {config.Entity.ContextType}");
+                    throw new Exception($"Entity \"{config.Entity.SourceType}\" with id {id} received from {config.DestinationConfig} not found in context {config.Entity.ContextType}");
                 }
 
-                
                 var properties = new MessageProperties();
                 properties.ContentType = "application/json";
                 properties.DeliveryMode = 2;
                 properties.Headers = new Dictionary<string, object>();
-                properties.Headers[ISMessageHeader.SCHEMA] = config.Entity.SerializedTargetTypeSchema;
-                properties.Headers[ISMessageHeader.SCHEMA_FORMAT_VERSION] = config.Entity.SchemaFormatVersion;
-                properties.Headers[ISMessageHeader.SCHEMA_GEN_UTC] = config.Entity.TargetTypeSchemaGeneratedDateUTC.ToString("yyyy-MM-ddTHH:mm:ssZ");
-                properties.Headers[ISMessageHeader.SCHEMA_CHECKSUM] = config.Entity.SerializedTargetTypeSchemaChecksum;
+                properties.Headers[ISMessageHeader.SCHEMA_CHECKSUM] = config.Entity.SchemaChecksum;
                 properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID] = id;
 
                 var json = JsonConvert.SerializeObject(mappedEntity);
                 var bytes = GetBytes(json);
 
-                _bus.Advanced.Publish(config.Exchange, "", false, properties, bytes);
+                _bus.Advanced.Publish(config.Destination, "", false, properties, bytes);
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using EasyNetQ.Topology;
+﻿using Common;
+using EasyNetQ.Topology;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,14 +10,16 @@ namespace ChangeTrackerExample.Configuration
 {
     public class EntityConfig
     {
-        internal EntityConfig(IBoundedMappedEntity entity, IExchange exchange)
+        internal EntityConfig(IBoundedMappedEntity entity, PrefixedDestinationConfig destinationConfig)
         {
             Entity = entity;
-            Exchange = exchange;
+            DestinationConfig = destinationConfig;
+            Destination = new Exchange($"{DestinationConfig.RootNamespace}.{DestinationConfig.Prefix}.{Entity.Name}");
         }
 
         public IBoundedMappedEntity Entity { get; }
-        public IExchange Exchange { get; }
+        public PrefixedDestinationConfig DestinationConfig { get; }
+        public Exchange Destination { get; }
     }
 
     public class EntityGroupedConfig

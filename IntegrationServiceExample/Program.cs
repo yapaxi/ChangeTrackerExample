@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EasyNetQ.Topology;
+using System.Diagnostics;
 
 namespace IntegrationServiceExample
 {
@@ -29,28 +30,22 @@ namespace IntegrationServiceExample
                 {
                     var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<IBus>().Advanced);
 
-                    var queue1 = rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_1);
-                    var queue2 = rabbitModelBuilder.BuildISExpectationsContract(queueToReceiveFrom: IS_QUEUE_2);
+                    var queue1 = rabbitModelBuilder.BuildISExpectationsContract(trackerInput: IS_QUEUE_1);
+                    var queue2 = rabbitModelBuilder.BuildISExpectationsContract(trackerInput: IS_QUEUE_2);
 
-                    Task.WaitAll
-                    (
-                        DrainQueueToConsole(queue1, outerScope),
-                        DrainQueueToConsole(queue2, outerScope)
-                    );
+                    DrainQueueToConsole(queue1, outerScope);
+                    DrainQueueToConsole(queue2, outerScope);
+
+                    Process.GetCurrentProcess().WaitForExit();
                 }
             }
         }
         
-        private static Task DrainQueueToConsole(IQueue queue, ILifetimeScope container)
+        private static void DrainQueueToConsole(IQueue queue, ILifetimeScope container)
         {
             Console.WriteLine($"Draining {queue.Name}");
-
-            var cmplSource = new TaskCompletionSource<object>();
             var bus = container.Resolve<IBus>();
-
             bus.Advanced.Consume(queue, (b, p, a) => WriteMessageToConsole(b, p, a));
-
-            return cmplSource.Task;
         }
 
         private static readonly object LOCK = new object();
