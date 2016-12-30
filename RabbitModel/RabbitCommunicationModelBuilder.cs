@@ -19,6 +19,14 @@ namespace RabbitModel
             _advancedBus = model;
         }
 
+        public void BuildISMetadataHandshakeContract()
+        {
+            const string name = "IS.metadata-handshake";
+            var e = _advancedBus.ExchangeDeclare(name, "direct", durable: true);
+            var q = _advancedBus.QueueDeclare($"{name}.queue", durable: true);
+            _advancedBus.Bind(e, q, "");
+        }
+
         public void BuildTrackerLoopback(string inputName, string outputName)
         {
             if (string.IsNullOrWhiteSpace(inputName))

@@ -48,7 +48,7 @@ namespace ChangeTrackerExample.App
                 properties.ContentType = "application/json";
                 properties.DeliveryMode = 2;
                 properties.Headers = new Dictionary<string, object>();
-                properties.Headers[ISMessageHeader.SCHEMA_CHECKSUM] = config.Entity.SchemaChecksum;
+                properties.Headers[ISMessageHeader.SCHEMA_CHECKSUM] = config.Entity.MappingSchema.Checksum;
                 properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID] = id;
 
                 var json = JsonConvert.SerializeObject(mappedEntity);

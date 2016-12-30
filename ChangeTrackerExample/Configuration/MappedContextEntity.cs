@@ -32,8 +32,9 @@ namespace ChangeTrackerExample.Configuration
             _md5 = MD5.Create();
             Mapper = mapper;
             TargetType = typeof(TTarget);
-            TargetTypeSchema = GetTypeSchema(typeof(TTarget));
-            SchemaChecksum = GetMD5(JsonConvert.SerializeObject(TargetTypeSchema, Formatting.None));
+            var properties = GetProperties(typeof(TTarget));
+            var checksum = GetMD5(JsonConvert.SerializeObject(properties, Formatting.None));
+            MappingSchema = new MappingSchema(properties, checksum, DateTime.UtcNow);
             Name = name;
         }
 
@@ -66,9 +67,9 @@ namespace ChangeTrackerExample.Configuration
             return BitConverter.ToInt64(_md5.ComputeHash(array), 0);
         }
 
-        private IReadOnlyCollection<EntityProperty> GetTypeSchema(Type t)
+        private IReadOnlyCollection<MappingProperty> GetProperties(Type t)
         {
-            var lst = new List<EntityProperty>();
+            var lst = new List<MappingProperty>();
 
             foreach (var p in t.GetProperties())
             {
@@ -82,20 +83,20 @@ namespace ChangeTrackerExample.Configuration
                     p.PropertyType == typeof(string) || 
                     p.PropertyType == typeof(Guid))
                 {
-                    lst.Add(new EntityProperty()
+                    lst.Add(new MappingProperty()
                     {
                         Name = p.Name,
                         Type = p.PropertyType.Name,
                         Size = attrs.OfType<MaxLengthAttribute>().FirstOrDefault()?.Length,
-                        Children = new EntityProperty[0]
+                        Children = new MappingProperty[0]
                     });
                 }
                 else
                 {
-                    var complex = new EntityProperty();
+                    var complex = new MappingProperty();
                     complex.Name = p.Name;
                     complex.Type = p.PropertyType.Name;
-                    complex.Children = GetTypeSchema(p.PropertyType);
+                    complex.Children = GetProperties(p.PropertyType);
                 }
             }
 
@@ -108,8 +109,7 @@ namespace ChangeTrackerExample.Configuration
         public Type SourceType => typeof(TSource);
         public Type TargetType { get; }
 
-        public IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
-        public long SchemaChecksum { get; }
+        public MappingSchema MappingSchema { get; }
 
         #endregion
     }
@@ -119,10 +119,8 @@ namespace ChangeTrackerExample.Configuration
         string Name { get; }
         Type SourceType { get; }
         Type TargetType { get; }
-        IReadOnlyCollection<EntityProperty> TargetTypeSchema { get; }
-        long SchemaChecksum { get; }
+        MappingSchema MappingSchema { get; }
         Type ContextType { get; }
-
         Task<object> GetAndMapByIdAsync(IEntityContext context, int id);
         Task<IReadOnlyCollection<object>> GetAndMapByRangeAsync(IEntityContext context, int fromId, int toId);
 

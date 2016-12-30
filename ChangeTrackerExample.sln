@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitModel", "RabbitModel\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contracts", "Contracts\Contracts.csproj", "{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

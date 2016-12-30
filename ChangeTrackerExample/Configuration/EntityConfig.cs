@@ -14,7 +14,7 @@ namespace ChangeTrackerExample.Configuration
         {
             Entity = entity;
             DestinationConfig = destinationConfig;
-            Destination = new Exchange($"{DestinationConfig.RootNamespace}.{DestinationConfig.Prefix}.{Entity.Name}");
+            Destination = new Exchange($"Contracts.IS.Dynamic.{DestinationConfig.RootNamespace}.{DestinationConfig.Prefix}.{Entity.Name}");
         }
 
         public IBoundedMappedEntity Entity { get; }

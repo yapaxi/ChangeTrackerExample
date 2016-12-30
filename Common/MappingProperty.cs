@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace Common
 {
-    public class EntityProperty
+    public class MappingProperty
     {
         public string Name { get; set; }
         public string Type { get; set; }
         public int? Size { get; set; }
-        public IReadOnlyCollection<EntityProperty> Children { get; set; }
+        public IReadOnlyCollection<MappingProperty> Children { get; set; }
     }
 }
