@@ -15,7 +15,6 @@ namespace ChangeTrackerExample.Configuration
     {
         private readonly ContainerBuilder _builder;
         private readonly List<EntityConfig> _entities;
-        private readonly string _rootNamespace;
 
         public EntityBuilder(ContainerBuilder containerBuilder)
         {
