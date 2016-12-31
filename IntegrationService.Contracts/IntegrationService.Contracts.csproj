@@ -4,13 +4,14 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}</ProjectGuid>
+    <ProjectGuid>{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Contracts</RootNamespace>
-    <AssemblyName>Contracts</AssemblyName>
+    <RootNamespace>IntegrationService.Contracts</RootNamespace>
+    <AssemblyName>IntegrationService.Contracts</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -40,13 +41,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IS\v1\SyncMetadataResponse.cs" />
-    <Compile Include="IS\v1\SyncMetadataRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="v1\SyncMetadataRequest.cs" />
+    <Compile Include="v1\SyncMetadataResponse.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.csproj">
-      <Project>{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}</Project>
+      <Project>{6ea00e45-52ad-40a8-a088-f003d8ecd8dd}</Project>
       <Name>Common</Name>
     </ProjectReference>
   </ItemGroup>

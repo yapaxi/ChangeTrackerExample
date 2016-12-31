@@ -22,6 +22,7 @@ namespace ChangeTrackerExample.App
         }
 
         public void NotifyChanged<TSource>(int id)
+            where TSource : class
         {
             var properties = CreateProperties<TSource>();
             _bus.Advanced.Publish(_exchange, "", false, properties, BitConverter.GetBytes(id));

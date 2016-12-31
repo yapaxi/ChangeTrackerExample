@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ChangeTrackerExample.App
+namespace ChangeTrackerExample.App.Events
 {
     public class EntityChangedEventArgs : EventArgs
     {

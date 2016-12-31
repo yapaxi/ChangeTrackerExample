@@ -4,13 +4,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Contracts.IS
+namespace IntegrationService.Contracts.v1
 {
     public class SyncMetadataResponse
     {
-        SyncMetadataResult Result { get; set; }
+        public SyncMetadataResponseItem[] Items { get; set; }
+    }
 
-        bool FullRebuildRequired { get; set; }
+    public class SyncMetadataResponseItem
+    {
+        public string Name { get; set; }
+        public SyncMetadataResult Result { get; set; }
+        public bool FullRebuildRequired { get; set; }
+        public string Message { get; set; }
     }
 
     public enum SyncMetadataResult

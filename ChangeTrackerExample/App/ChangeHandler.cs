@@ -54,7 +54,7 @@ namespace ChangeTrackerExample.App
                 var json = JsonConvert.SerializeObject(mappedEntity);
                 var bytes = GetBytes(json);
 
-                _bus.Advanced.Publish(config.Destination, "", false, properties, bytes);
+                _bus.Advanced.Publish(config.DestinationExchange, "", false, properties, bytes);
             }
         }
 

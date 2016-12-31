@@ -6,6 +6,7 @@ using ChangeTrackerExample.Domain;
 using Common;
 using EasyNetQ;
 using EasyNetQ.Topology;
+using IntegrationService.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RabbitModel;
@@ -34,24 +35,41 @@ namespace ChangeTrackerExample
             containerBuilder.RegisterModule(new RabbitAutofacModule(RABBIT_URI));
 
             RegisterDB(containerBuilder);
+            RegisterIS(containerBuilder);
             RegisterEntitiesAndDestinations(containerBuilder);
             RegisterHandlers(trackerLoopbackExchange, trackerLoopbackQueue, containerBuilder);
 
             using (var container = containerBuilder.Build())
             using (var scope = container.BeginLifetimeScope())
             {
+                scope.Resolve<ISSynchronizer>().Start();
+
                 var rabcom = new RabbitCommunicationModelBuilder(scope.Resolve<IBus>().Advanced);
 
                 rabcom.BuildTrackerLoopback(trackerLoopbackExchange, trackerLoopbackQueue);
 
                 foreach (var config in scope.Resolve<IEnumerable<EntityConfig>>())
                 {
-                    rabcom.BuildTrackerToISContract(config.Destination.Name);
+                    rabcom.BuildTrackerToISContract(config.DestinationExchange.Name, config.DestinationQueue.Name);
                 }
-                
+
+
                 RunLoopbackListener(scope);
                 RunBlockingDebugGenerator(scope);
             }
+        }
+        
+        private static void RegisterIS(ContainerBuilder containerBuilder)
+        {
+            containerBuilder.RegisterType<ISClient>().SingleInstance();
+            containerBuilder.Register(e =>
+            {
+                var sync = new ISSynchronizer(e.Resolve<ISClient>(), e.Resolve<IEnumerable<EntityConfig>>());
+                sync.OnSyncSucceeded += (s, o) => Console.WriteLine("Meta sync success");
+                sync.OnSyncFailed += (s, o) => Console.WriteLine("Meta sync failed");
+                sync.OnQueueFailed += (s, o) => Console.WriteLine("Meta sync queue failed");
+                return sync;
+            }).SingleInstance();
         }
 
         private static void RunBlockingDebugGenerator(ILifetimeScope outerScope)

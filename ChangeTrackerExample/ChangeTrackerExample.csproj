@@ -71,7 +71,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App\ChangeHandler.cs" />
-    <Compile Include="App\EntityChangedEventArgs.cs" />
+    <Compile Include="App\Events\EntityChangedEventArgs.cs" />
+    <Compile Include="App\Events\QueueFailedEventArgs.cs" />
+    <Compile Include="App\ISSynchronizer.cs" />
+    <Compile Include="App\Events\ISSyncFailedEventArgs.cs" />
     <Compile Include="App\LoopbackListener.cs" />
     <Compile Include="App\LoopbackNotifier.cs" />
     <Compile Include="Configuration\ChangeTrackerBuilder.cs" />
@@ -96,6 +99,14 @@
     <ProjectReference Include="..\Common\Common.csproj">
       <Project>{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}</Project>
       <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\IntegrationService.Client\IntegrationService.Client.csproj">
+      <Project>{5CD2E4FA-CDC2-4101-8CA7-FA5E239822BD}</Project>
+      <Name>IntegrationService.Client</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\IntegrationService.Contracts\IntegrationService.Contracts.csproj">
+      <Project>{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}</Project>
+      <Name>IntegrationService.Contracts</Name>
     </ProjectReference>
     <ProjectReference Include="..\RabbitModel\RabbitModel.csproj">
       <Project>{33b8208f-7a21-4ad6-8d7c-1cf747f28f1d}</Project>

@@ -7,8 +7,8 @@
     <ProjectGuid>{52C9D853-30B9-4F96-8887-CE687CCE633F}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>IntegrationServiceExample</RootNamespace>
-    <AssemblyName>IntegrationServiceExample</AssemblyName>
+    <RootNamespace>IntegrationService.Host</RootNamespace>
+    <AssemblyName>IntegrationService.Host</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

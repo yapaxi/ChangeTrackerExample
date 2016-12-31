@@ -14,12 +14,14 @@ namespace ChangeTrackerExample.Configuration
         {
             Entity = entity;
             DestinationConfig = destinationConfig;
-            Destination = new Exchange($"Contracts.IS.Dynamic.{DestinationConfig.RootNamespace}.{DestinationConfig.Prefix}.{Entity.Name}");
+            DestinationExchange = new Exchange($"Contracts.IS.Dynamic.{DestinationConfig.RootNamespace}.{DestinationConfig.Prefix}.{Entity.Name}");
+            DestinationQueue = new Queue(DestinationExchange + ".queue", false);
         }
 
         public IBoundedMappedEntity Entity { get; }
         public PrefixedDestinationConfig DestinationConfig { get; }
-        public Exchange Destination { get; }
+        public IExchange DestinationExchange { get; }
+        public IQueue DestinationQueue { get; }
     }
 
     public class EntityGroupedConfig

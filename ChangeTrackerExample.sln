@@ -1,17 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
+# Visual Studio Express 14 for Web
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChangeTrackerExample", "ChangeTrackerExample\ChangeTrackerExample.csproj", "{825A7AEC-824C-4571-A085-2FB9ADD5275C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationServiceExample", "IntegrationServiceExample\IntegrationServiceExample.csproj", "{52C9D853-30B9-4F96-8887-CE687CCE633F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationService.Host", "IntegrationServiceExample\IntegrationService.Host.csproj", "{52C9D853-30B9-4F96-8887-CE687CCE633F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitModel", "RabbitModel\RabbitModel.csproj", "{33B8208F-7A21-4AD6-8D7C-1CF747F28F1D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contracts", "Contracts\Contracts.csproj", "{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationService.Client", "IntegrationService.Client\IntegrationService.Client.csproj", "{5CD2E4FA-CDC2-4101-8CA7-FA5E239822BD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationService.Contracts", "IntegrationService.Contracts\IntegrationService.Contracts.csproj", "{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,10 +37,14 @@ Global
 		{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DD21DAAC-86ED-4339-9DD3-F8D66A87ACD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CD2E4FA-CDC2-4101-8CA7-FA5E239822BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CD2E4FA-CDC2-4101-8CA7-FA5E239822BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CD2E4FA-CDC2-4101-8CA7-FA5E239822BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CD2E4FA-CDC2-4101-8CA7-FA5E239822BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

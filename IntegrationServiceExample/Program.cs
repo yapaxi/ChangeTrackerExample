@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using EasyNetQ.Topology;
 using System.Diagnostics;
 
-namespace IntegrationServiceExample
+namespace IntegrationService.Host
 {
     public class Program
     {
@@ -30,8 +30,8 @@ namespace IntegrationServiceExample
                 {
                     var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<IBus>().Advanced);
 
-                    var queue1 = rabbitModelBuilder.BuildISExpectationsContract(trackerInput: IS_QUEUE_1);
-                    var queue2 = rabbitModelBuilder.BuildISExpectationsContract(trackerInput: IS_QUEUE_2);
+                    var queue1 = rabbitModelBuilder.BuildISExpectationsContract(outputName: IS_QUEUE_1);
+                    var queue2 = rabbitModelBuilder.BuildISExpectationsContract(outputName: IS_QUEUE_2);
 
                     DrainQueueToConsole(queue1, outerScope);
                     DrainQueueToConsole(queue2, outerScope);
