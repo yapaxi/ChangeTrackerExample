@@ -5,7 +5,7 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChangeTrackerExample", "ChangeTrackerExample\ChangeTrackerExample.csproj", "{825A7AEC-824C-4571-A085-2FB9ADD5275C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationService.Host", "IntegrationServiceExample\IntegrationService.Host.csproj", "{52C9D853-30B9-4F96-8887-CE687CCE633F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationService.Host", "IntegrationService.Host\IntegrationService.Host.csproj", "{52C9D853-30B9-4F96-8887-CE687CCE633F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitModel", "RabbitModel\RabbitModel.csproj", "{33B8208F-7A21-4AD6-8D7C-1CF747F28F1D}"
 EndProject
