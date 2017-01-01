@@ -50,6 +50,10 @@ namespace ChangeTrackerExample.App
                 _tryCount++;
                 SyncMetadataInternal();
             }
+            catch (AggregateException e) when (e.InnerExceptions.All(q => q is TimeoutException))
+            {
+                OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e.InnerException, TryCount = _tryCount });
+            }
             catch (EasyNetQException e)
             {
                 OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });

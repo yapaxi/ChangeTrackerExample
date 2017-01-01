@@ -36,7 +36,7 @@ namespace ChangeTrackerExample
 
             RegisterDB(containerBuilder);
             RegisterIS(containerBuilder);
-            RegisterEntitiesAndDestinations(containerBuilder);
+            RegisterEntities(containerBuilder);
             RegisterHandlers(trackerLoopbackExchange, trackerLoopbackQueue, containerBuilder);
 
             using (var container = containerBuilder.Build())
@@ -52,8 +52,7 @@ namespace ChangeTrackerExample
                 {
                     rabcom.BuildTrackerToISContract(config.DestinationExchange.Name, config.DestinationQueue.Name);
                 }
-
-
+                
                 RunLoopbackListener(scope);
                 RunBlockingDebugGenerator(scope);
             }
@@ -155,7 +154,7 @@ namespace ChangeTrackerExample
             ));
         }
         
-        private static void RegisterEntitiesAndDestinations(ContainerBuilder containerBuilder)
+        private static void RegisterEntities(ContainerBuilder containerBuilder)
         {
             var entityBuilder = new EntityBuilder(containerBuilder);
             var entity = entityBuilder.Entity<SomeEntity>().FromContext<SourceContext>();
