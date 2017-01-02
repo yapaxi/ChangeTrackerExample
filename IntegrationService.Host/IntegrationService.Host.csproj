@@ -49,6 +49,10 @@
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="RabbitMQ.Client, Version=3.6.0.0, Culture=neutral, PublicKeyToken=89e7d7c5feba84ce, processorArchitecture=MSIL">
       <HintPath>..\packages\RabbitMQ.Client.3.6.0\lib\net45\RabbitMQ.Client.dll</HintPath>
       <Private>True</Private>
@@ -65,18 +69,35 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DAL\DDL\TableColumnDefinition.cs" />
+    <Compile Include="DAL\SchemaRepository.cs" />
+    <Compile Include="Domain\Mapping.cs" />
+    <Compile Include="Metadata\ISSynchronizerHost.cs" />
+    <Compile Include="Metadata\DBSchemaService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="DAL\Contexts\SchemaContext.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Common\Common.csproj">
+      <Project>{6EA00E45-52AD-40A8-A088-F003D8ECD8DD}</Project>
+      <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\IntegrationService.Contracts\IntegrationService.Contracts.csproj">
+      <Project>{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}</Project>
+      <Name>IntegrationService.Contracts</Name>
+    </ProjectReference>
     <ProjectReference Include="..\RabbitModel\RabbitModel.csproj">
       <Project>{33b8208f-7a21-4ad6-8d7c-1cf747f28f1d}</Project>
       <Name>RabbitModel</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Listeners\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

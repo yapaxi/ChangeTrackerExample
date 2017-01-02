@@ -20,6 +20,7 @@ namespace ChangeTrackerExample.App
         private readonly Timer _timer;
         private readonly object _lock;
         private int _tryCount;
+        private int _inProgress;
 
         public ISSynchronizer(ISClient client, IEnumerable<EntityConfig> configurations)
         {
@@ -47,6 +48,11 @@ namespace ChangeTrackerExample.App
         {
             try
             {
+                if (Interlocked.CompareExchange(ref _inProgress, 1, 0) == 1)
+                {
+                    return;
+                }
+
                 _tryCount++;
                 SyncMetadataInternal();
             }
@@ -62,6 +68,10 @@ namespace ChangeTrackerExample.App
             {
                 OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });
             }
+            finally
+            {
+                Interlocked.Exchange(ref _inProgress, 0);
+            }
         }
 
         private void SyncMetadataInternal()
@@ -69,6 +79,7 @@ namespace ChangeTrackerExample.App
             var request = FormatRequest();
 
             var response = _client.SyncMetadata(request);
+            Console.WriteLine("Sync request sent");
 
             var result = (
                 from rq in request.Items
@@ -108,7 +119,7 @@ namespace ChangeTrackerExample.App
                 Items = _configurations.Select(e => new SyncMetadataRequestItem()
                 {
                     Schema = e.Entity.MappingSchema,
-                    Name = e.DestinationExchange.Name,
+                    Name = e.FullName,
                     QueueName = e.DestinationQueue.Name
                 }).ToArray()
             };

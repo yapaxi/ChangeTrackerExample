@@ -8,14 +8,17 @@ namespace Common
 {
     public class MappingSchema
     {
-        public MappingSchema(IReadOnlyCollection<MappingProperty> properties, long checksum, DateTime createdUTC)
+        public MappingSchema(
+            MappingProperty[] properties,
+            long checksum,
+            DateTime createdUTC)
         {
             this.Properties = properties;
             this.Checksum = checksum;
             this.CreatedUTC = createdUTC;
         }
-
-        public IReadOnlyCollection<MappingProperty> Properties { get; }
+        
+        public MappingProperty[] Properties { get; }
         public long Checksum { get; }
         public DateTime CreatedUTC { get; }
     }

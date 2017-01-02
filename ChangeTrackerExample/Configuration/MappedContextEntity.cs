@@ -25,7 +25,7 @@ namespace ChangeTrackerExample.Configuration
 
         public Expression<Func<TSource, TTarget>> Mapper { get; }
 
-        public string Name { get; }
+        public string ShortName { get; }
 
         internal MappedContextEntity(string name, Expression<Func<TSource, TTarget>> mapper)
         {
@@ -35,7 +35,7 @@ namespace ChangeTrackerExample.Configuration
             var properties = GetProperties(typeof(TTarget));
             var checksum = GetMD5(JsonConvert.SerializeObject(properties, Formatting.None));
             MappingSchema = new MappingSchema(properties, checksum, DateTime.UtcNow);
-            Name = name;
+            ShortName = name;
         }
 
         public async Task<object> GetAndMapByIdAsync(IEntityContext context, int id)
@@ -67,7 +67,7 @@ namespace ChangeTrackerExample.Configuration
             return BitConverter.ToInt64(_md5.ComputeHash(array), 0);
         }
 
-        private IReadOnlyCollection<MappingProperty> GetProperties(Type t)
+        private MappingProperty[] GetProperties(Type t)
         {
             var lst = new List<MappingProperty>();
 
@@ -86,7 +86,7 @@ namespace ChangeTrackerExample.Configuration
                     lst.Add(new MappingProperty()
                     {
                         Name = p.Name,
-                        Type = p.PropertyType.Name,
+                        ClrType = p.PropertyType.FullName,
                         Size = attrs.OfType<MaxLengthAttribute>().FirstOrDefault()?.Length,
                         Children = new MappingProperty[0]
                     });
@@ -95,12 +95,12 @@ namespace ChangeTrackerExample.Configuration
                 {
                     var complex = new MappingProperty();
                     complex.Name = p.Name;
-                    complex.Type = p.PropertyType.Name;
+                    complex.ClrType = p.PropertyType.FullName;
                     complex.Children = GetProperties(p.PropertyType);
                 }
             }
 
-            return lst;
+            return lst.ToArray();
         }
 
         #region IBoundedMappedEntity
@@ -116,7 +116,7 @@ namespace ChangeTrackerExample.Configuration
 
     public interface IBoundedMappedEntity
     {
-        string Name { get; }
+        string ShortName { get; }
         Type SourceType { get; }
         Type TargetType { get; }
         MappingSchema MappingSchema { get; }

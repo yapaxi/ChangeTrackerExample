@@ -105,7 +105,6 @@ namespace ChangeTrackerExample
                     foreach (var entity in lst)
                     {
                         notifier.NotifyChanged<SomeEntity>(entity.Id);
-                        Console.WriteLine($"Notified for entity with id {entity.Id}");
                     }
                 }
 
@@ -173,24 +172,24 @@ namespace ChangeTrackerExample
                 }
             );
 
-            var entityYYY = entity.Map
-            (
-                name: "some-entity",
-                mapper: e => new
-                {
-                    Id = e.Id,
-                    Guid = e.Guid,
-                    YYY = e.MaxString,
-                    Complex = new { e.Int32, e.Int64 }
-                }
-            );
+            //var entityYYY = entity.Map
+            //(
+            //    name: "some-entity",
+            //    mapper: e => new
+            //    {
+            //        Id = e.Id,
+            //        Guid = e.Guid,
+            //        YYY = e.MaxString,
+            //        Complex = new { e.Int32, e.Int64 }
+            //    }
+            //);
             
             var root = entityBuilder.DestinationRoot("example-ms");
             var search = root.ComplexObjectsAllowed().Prefixed("search");
             var reporting = root.Prefixed("reporting");
 
             entityBuilder.MapEntityToDestination(entityXXX, reporting);
-            entityBuilder.MapEntityToDestination(entityYYY, search);
+        //    entityBuilder.MapEntityToDestination(entityYYY, search);
 
             entityBuilder.Build();
         }

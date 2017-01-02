@@ -10,37 +10,38 @@ using System.Text;
 using System.Threading.Tasks;
 using EasyNetQ.Topology;
 using System.Diagnostics;
+using IntegrationService.Contracts.v1;
+using IntegrationService.Host.DAL;
+using IntegrationService.Host.DAL.Contexts;
+using IntegrationService.Host.Metadata;
 
 namespace IntegrationService.Host
 {
     public class Program
     {
         private static readonly string RABBIT_URI = ConfigurationManager.ConnectionStrings["rabbitUri"].ConnectionString;
-        private static readonly string IS_QUEUE_1 = ConfigurationManager.ConnectionStrings["ISQueue1"].ConnectionString;
-        private static readonly string IS_QUEUE_2 = ConfigurationManager.ConnectionStrings["ISQueue2"].ConnectionString;
 
         static void Main(string[] args)
         {
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterModule(new RabbitAutofacModule(RABBIT_URI));
 
+            containerBuilder.Register(e => new SchemaContext(@"server=.\sqlexpress;database=SchemaDB;integrated security=SSPI"));
+            containerBuilder.RegisterType<SchemaRepository>();
+            containerBuilder.RegisterType<DBSchemaService>();
+
             using (var container = containerBuilder.Build())
-            {
-                using (var outerScope = container.BeginLifetimeScope())
-                {
-                    var rabbitModelBuilder = new RabbitCommunicationModelBuilder(outerScope.Resolve<IBus>().Advanced);
+            using (var scope = container.BeginLifetimeScope())
+            using (var host = new ISSynchronizerHost(scope))
+            { 
+                host.Start();
 
-                    var queue1 = rabbitModelBuilder.BuildISExpectationsContract(outputName: IS_QUEUE_1);
-                    var queue2 = rabbitModelBuilder.BuildISExpectationsContract(outputName: IS_QUEUE_2);
-
-                    DrainQueueToConsole(queue1, outerScope);
-                    DrainQueueToConsole(queue2, outerScope);
-
-                    Process.GetCurrentProcess().WaitForExit();
-                }
+                Console.WriteLine("All Run");
+                Process.GetCurrentProcess().WaitForExit();
             }
         }
-        
+
+
         private static void DrainQueueToConsole(IQueue queue, ILifetimeScope container)
         {
             Console.WriteLine($"Draining {queue.Name}");

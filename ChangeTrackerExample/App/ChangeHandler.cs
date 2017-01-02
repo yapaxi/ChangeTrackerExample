@@ -32,8 +32,6 @@ namespace ChangeTrackerExample.App
         
         public void HandleEntityChanged(string entityTypeFullName, int id)
         {
-            Console.WriteLine($"Received changed entity notification {id}");
-
             var configs = GetConfigurationOrFail(entityTypeFullName);
             foreach (var config in configs)
             {
