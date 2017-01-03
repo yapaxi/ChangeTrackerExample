@@ -38,48 +38,65 @@ namespace IntegrationService.Host.DAL
             return _context.Database.BeginTransaction(level);
         }
 
-        public StagingTable CreateStagingTable(string name, TableColumnDefinition[] columns)
+        public StagingTable CreateStagingTable(string schemalessTableName, TableColumnDefinition[] columns)
         {
-            MoveOldTableIfExists(name);
-            var tableName = CreateStagingTableInternal(name, columns);
+            var tableName = FormatTableName(STAGING_SCHEMA_NAME, schemalessTableName);
+            MoveOldStagingTableIfExists(schemalessTableName);
+            CreateTableInternal(tableName, columns);
             return new StagingTable(tableName);
         }
 
-        private string CreateStagingTableInternal(string name, TableColumnDefinition[] columns)
+        private string CreateTableInternal(string fqTableName, TableColumnDefinition[] columns)
         {
-            string tableName;
-            var sql = GetStagingTableCreateSql(name, columns, out tableName);
+            Console.WriteLine($"Creating table {fqTableName}");
+            var sql = GetTableCreateSql(fqTableName, columns);
+            Console.WriteLine(sql);
             _context.Database.ExecuteSqlCommand(sql);
-            return tableName;
+            Console.WriteLine($"Table {fqTableName} created");
+            return fqTableName;
         }
 
-        private void MoveOldTableIfExists(string name)
+        private void MoveOldStagingTableIfExists(string name)
         {
+            var existingTableName = FormatTableName(STAGING_SCHEMA_NAME, name);
+
             var exists = _context.Database.SqlQuery<bool>(
-                @"select cast(count(*) as bit) as [exists]
-                  from INFORMATION_SCHEMA.TABLES t 
-                  where t.TABLE_NAME = @p0 and t.TABLE_SCHEMA = @p1",
-                new SqlParameter("p0", name),
-                new SqlParameter("p1", STAGING_SCHEMA_NAME)).FirstOrDefault();
+                @"select cast(iif(object_id(@p0) is null, 0, 1) as bit) as [exists]",
+                new SqlParameter("p0", existingTableName)
+            ).FirstOrDefault();
+
+            var schemalessNewTableName = $"{name}_{DateTime.UtcNow:yyyyMMddHHmmss.fff}";
+
+            var fqMovedTableName = FormatTableName(DEACTIVATED_SCHEMA_NAME, name);
+            var fqNewTableName = FormatTableName(DEACTIVATED_SCHEMA_NAME, schemalessNewTableName);
 
             if (exists)
             {
-                var timestmap = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-                _context.Database.ExecuteSqlCommand($"alter schema [{DEACTIVATED_SCHEMA_NAME}] transfer [{STAGING_SCHEMA_NAME}].[{name}]");
-                _context.Database.ExecuteSqlCommand($"sp_rename '[{DEACTIVATED_SCHEMA_NAME}].[{name}]', '{name}_{timestmap}'");
+                Console.WriteLine($"Table {existingTableName} found, moving to {fqNewTableName}");
+                _context.Database.ExecuteSqlCommand($"alter schema [{DEACTIVATED_SCHEMA_NAME}] transfer {existingTableName}");
+                _context.Database.ExecuteSqlCommand($"sp_rename '{fqMovedTableName}', '{schemalessNewTableName}'");
+            }
+            else
+            {
+                Console.WriteLine($"Table {existingTableName} not found");
             }
         }
 
-        private static string GetStagingTableCreateSql(string name, TableColumnDefinition[] columns, out string tableName)
+        private static string FormatTableName(string schema, string tableName)
+        {
+            return $"[{schema}].[{tableName}]";
+        }
+
+        private static string GetTableCreateSql(string tableName, TableColumnDefinition[] columns)
         {
             const string indent = "    ";
             var builder = new StringBuilder();
-
-            tableName = $"[{STAGING_SCHEMA_NAME}].[{name}]";
+            
             builder.AppendLine($"create table {tableName}");
             builder.AppendLine("(");
-            foreach (var column in columns)
+            for (int i = 0; i < columns.Length; i++)
             {
+                var column = columns[i];
                 builder.Append($"{indent}[{column.Name}] {column.SqlType}");
                 if (column.IsNullable)
                 {
@@ -89,9 +106,16 @@ namespace IntegrationService.Host.DAL
                 {
                     builder.Append(" not null");
                 }
-                builder.AppendLine(",");
+
+                if (i != columns.Length - 1)
+                {
+                    builder.AppendLine(",");
+                }
+                else
+                {
+                    builder.AppendLine();
+                }
             }
-            builder.Length -= 1;
             builder.AppendLine(")");
             return builder.ToString();
         }

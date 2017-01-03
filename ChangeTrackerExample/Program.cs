@@ -175,7 +175,7 @@ namespace ChangeTrackerExample
                     Int32 = e.Int32,
                     Int64 = e.Int64,
                     YYY = e.MaxString,
-                    XXX = e.ShortString
+                    v15 = e.ShortString
                 }
             );
 

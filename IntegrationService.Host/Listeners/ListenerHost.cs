@@ -28,7 +28,7 @@ namespace IntegrationService.Host.Listeners
             _bus = _scope.ResolveNamed<IBus>(Buses.Messaging);
         }
 
-        public void Accept(string queue, MappingProperty[] schemaProperties, StagingTable stagingTable)
+        public void Accept(string entityName, string queue, MappingSchema schema, StagingTable stagingTable)
         {
             if (_disposed)
             {
@@ -43,16 +43,16 @@ namespace IntegrationService.Host.Listeners
                 }
 
                 IDisposable currentSubscription;
-                if (_subscriptions.TryGetValue(queue, out currentSubscription))
+                if (_subscriptions.TryGetValue(entityName, out currentSubscription))
                 {
-                    Console.WriteLine($"Closing existing subscription for queue {queue}");
+                    Console.WriteLine($"Closing existing subscription for {entityName}");
                     currentSubscription.Dispose();
                 }
 
-                Console.WriteLine($"Creating new subscription for {queue} -> {stagingTable.Name}");
-                var handler = new RawMessageHandler(schemaProperties, stagingTable);
+                Console.WriteLine($"Creating new subscription for {entityName} -> {stagingTable.Name}");
+                var handler = new RawMessageHandler(schema.Properties, stagingTable);
                 var subscr = _bus.Advanced.Consume(new Queue(queue, false), (data, properties, info) => handler.Handle(data, properties, info));
-                _subscriptions[queue] = subscr;
+                _subscriptions[entityName] = subscr;
             }
         }
 

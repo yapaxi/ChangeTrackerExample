@@ -10,15 +10,17 @@ namespace IntegrationService.Host.Metadata
 {
     public class ActivatedSchemaEventArgs : EventArgs
     {
-        public ActivatedSchemaEventArgs(MappingProperty[] schemaProperties, string queue, StagingTable stagingTable)
+        public ActivatedSchemaEventArgs(string entityName, MappingSchema schema, string queue, StagingTable stagingTable)
         {
-            SchemaProperties = schemaProperties;
+            Schema = schema;
             Queue = queue;
             StagingTable = stagingTable;
+            EntityName = entityName;
         }
 
-        public MappingProperty[] SchemaProperties { get; }
+        public MappingSchema Schema { get; }
         public string Queue { get; }
         public StagingTable StagingTable { get; }
+        public string EntityName { get; }
     }
 }

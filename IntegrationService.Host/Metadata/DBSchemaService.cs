@@ -14,11 +14,9 @@ namespace IntegrationService.Host.Metadata
     public class DBSchemaService
     {
         private readonly SchemaRepository _repository;
-        private readonly object _lock;
 
         public DBSchemaService(SchemaRepository repository)
         {
-            _lock = new object();
             _repository = repository;
         }
 
@@ -26,20 +24,17 @@ namespace IntegrationService.Host.Metadata
         {
             try
             {
-                lock (_lock)
+                using (var tran = _repository.BeginTransaction())
                 {
-                    using (var tran = _repository.BeginTransaction())
+                    var stagingTable = ActivateSchemaInternal(name, queueName, schema);
+
+                    tran.Commit();
+
+                    return new SchemaActivationResult()
                     {
-                        var stagingTable = ActivateSchemaInternal(name, queueName, schema);
-
-                        tran.Commit();
-
-                        return new SchemaActivationResult()
-                        {
-                            StagingTable = stagingTable,
-                            Name = name,
-                        };
-                    }
+                        StagingTable = stagingTable,
+                        Name = name,
+                    };
                 }
             }
             catch (Exception e)
@@ -60,17 +55,19 @@ namespace IntegrationService.Host.Metadata
         private StagingTable ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
         {
             var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
-
             var existing = mappings.FirstOrDefault(e => e.Checksum == schema.Checksum);
 
             if (existing != null)
             {
+                Console.WriteLine("Existing found");
                 if (existing.IsActive)
                 {
+                    Console.WriteLine("Already active, nothing to do");
                     return new StagingTable(existing.StagingTableName);
                 }
                 else
                 {
+                    Console.WriteLine("Reactivating");
                     var stagingTable = CreateTable(name, schema.Properties);
 
                     DeactivateAll(mappings);
@@ -82,6 +79,16 @@ namespace IntegrationService.Host.Metadata
             }
             else
             {
+                var max = !mappings.Any() ? default(DateTime) : mappings.Max(e => e.SchemaCreatedAt);
+
+                if (schema.CreatedUTC < max)
+                {
+                    var times = $"Request UTC: {schema.CreatedUTC:yyyyMMddHHmmss.fff} is less than Known UTC: {max:yyyyMMddHHmmss.fff}";
+                    throw new Exception($"Schema change is rejected, because it was issued before last known schema. {times}");
+                }
+
+                Console.WriteLine("Exiting not found");
+
                 var stagingTable = CreateTable(name, schema.Properties);
 
                 DeactivateAll(mappings);
@@ -91,9 +98,10 @@ namespace IntegrationService.Host.Metadata
                     IsActive = true,
                     Checksum = schema.Checksum,
                     CreatedAt = DateTime.UtcNow,
+                    SchemaCreatedAt = schema.CreatedUTC,
                     Name = name,
                     QueueName = queueName,
-                    SchemaProperties = JsonConvert.SerializeObject(schema.Properties),
+                    Schema = JsonConvert.SerializeObject(schema),
                     StagingTableName = stagingTable.Name
                 });
 

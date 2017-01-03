@@ -24,9 +24,11 @@ namespace IntegrationService.Host.Domain
         public virtual string QueueName { get; set; }
 
         [Required]
-        public virtual string SchemaProperties { get; set; }
+        public virtual string Schema { get; set; }
 
         public virtual DateTime CreatedAt { get; set; }
+
+        public virtual DateTime SchemaCreatedAt { get; set; }
 
         public virtual bool IsActive { get; set; }
 

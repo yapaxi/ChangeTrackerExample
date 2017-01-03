@@ -13,12 +13,14 @@ namespace IntegrationService.Host.Metadata
 {
     public class ISSynchronizerHost : IDisposable
     {
+        private readonly object _lock;
         private readonly IBus _bus;
         private readonly ILifetimeScope _scope;
         private IDisposable _syncMetadataSubscription;
 
         public ISSynchronizerHost(ILifetimeScope scope)
         {
+            _lock = new object();
             _scope = scope;
             _bus = _scope.ResolveNamed<IBus>(Buses.ISSync);
         }
@@ -36,7 +38,8 @@ namespace IntegrationService.Host.Metadata
                     OnActivatedSchema?.Invoke(
                             this,
                             new ActivatedSchemaEventArgs(
-                                JsonConvert.DeserializeObject<MappingProperty[]>(mapping.SchemaProperties),
+                                mapping.Name,
+                                JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema),
                                 mapping.QueueName,
                                 new DAL.StagingTable(mapping.StagingTableName))
                     );
@@ -53,27 +56,36 @@ namespace IntegrationService.Host.Metadata
         {
             try
             {
-                Console.WriteLine("Accepted sync request");
-                var activationResult = ActivateSchemas(request.Items);
-
-                foreach (var activatedSchema in activationResult.Where(e => !e.IsFailed))
+                lock (_lock)
                 {
-                    var details = request.Items.Where(e => e.Name == activatedSchema.Name).Single();
-                    if (!activatedSchema.FullRebuildRequired)
-                    {
-                        OnActivatedSchema?.Invoke(
-                            this,
-                            new ActivatedSchemaEventArgs(details.Schema.Properties, details.QueueName, activatedSchema.StagingTable)
-                        );
-                    }
-                    else
-                    {
-                        throw new NotImplementedException();
-                    }
-                }
+                    Console.WriteLine("Accepted sync request");
+                    var activationResult = ActivateSchemas(request.Items);
 
-                Console.WriteLine("Sync request handeled");
-                return new SyncMetadataResponse() { Items = activationResult.Select(Convert).ToArray() };
+                    foreach (var activatedSchema in activationResult.Where(e => !e.IsFailed))
+                    {
+                        var details = request.Items.Where(e => e.Name == activatedSchema.Name).Single();
+                        if (!activatedSchema.FullRebuildRequired)
+                        {
+                            OnActivatedSchema?.Invoke(
+                                this,
+                                new ActivatedSchemaEventArgs(
+                                    details.Name,
+                                    details.Schema,
+                                    details.QueueName,
+                                    activatedSchema.StagingTable)
+                            );
+                        }
+                        else
+                        {
+                            throw new NotImplementedException();
+                        }
+                    }
+
+                    var items = activationResult.Select(Convert).ToArray();
+
+                    Console.WriteLine("Sync request handeled");
+                    return new SyncMetadataResponse() { Items = items };
+                }
             }
             catch (Exception e)
             {
@@ -92,7 +104,7 @@ namespace IntegrationService.Host.Metadata
             }
             else
             {
-                throw new NotImplementedException();
+                throw new NotImplementedException(e.Exception.Message);
             }
 
             return new SyncMetadataResponseItem()
