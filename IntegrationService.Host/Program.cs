@@ -14,39 +14,36 @@ using IntegrationService.Contracts.v1;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.DAL.Contexts;
 using IntegrationService.Host.Metadata;
+using IntegrationService.Host.Listeners;
 
 namespace IntegrationService.Host
 {
     public class Program
     {
-        private static readonly string RABBIT_URI = ConfigurationManager.ConnectionStrings["rabbitUri"].ConnectionString;
-
         static void Main(string[] args)
         {
+            var rootScope = "root";
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterModule(new RabbitAutofacModule(RABBIT_URI));
 
-            containerBuilder.Register(e => new SchemaContext(@"server=.\sqlexpress;database=SchemaDB;integrated security=SSPI"));
+            containerBuilder.RegisterModule(new RabbitAutofacModule(rootScope));
+
+            containerBuilder.Register(e => new SchemaContext(@"server =.\sqlexpress;database=SchemaDB;integrated security=SSPI"));
             containerBuilder.RegisterType<SchemaRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
 
             using (var container = containerBuilder.Build())
-            using (var scope = container.BeginLifetimeScope())
-            using (var host = new ISSynchronizerHost(scope))
-            { 
-                host.Start();
+            using (var scope = container.BeginLifetimeScope(rootScope))
+            using (var syncHost = new ISSynchronizerHost(scope))
+            using (var listenHost = new ListenerHost(scope))
+            {
+                syncHost.OnActivatedSchema += (s, e) => listenHost.Accept(e.Queue, e.SchemaProperties, e.StagingTable);
+
+                syncHost.RecoverKnownSchemas();
+                syncHost.StartAcceptingExternalSchemas();
 
                 Console.WriteLine("All Run");
                 Process.GetCurrentProcess().WaitForExit();
             }
-        }
-
-
-        private static void DrainQueueToConsole(IQueue queue, ILifetimeScope container)
-        {
-            Console.WriteLine($"Draining {queue.Name}");
-            var bus = container.Resolve<IBus>();
-            bus.Advanced.Consume(queue, (b, p, a) => WriteMessageToConsole(b, p, a));
         }
 
         private static readonly object LOCK = new object();

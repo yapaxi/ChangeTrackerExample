@@ -5,38 +5,47 @@ using System.Text;
 using System.Threading.Tasks;
 using Autofac;
 using EasyNetQ;
+using IntegrationService.Client;
 
 namespace RabbitModel
 {
-    public class RabbitAutofacModule : Module
+    public class RabbitAutofacModule : Autofac.Module
     {
-        private readonly string _connectionString;
+        private readonly string _scope;
+        private readonly string _loopbackVHost;
 
-        private readonly IReadOnlyDictionary<string, string> _parsedConnectionString;
-
-        public RabbitAutofacModule(string connectionString)
+        public RabbitAutofacModule(string busResolveScope, string loopbackVHost = null)
         {
-            _connectionString = connectionString;
-            _parsedConnectionString = 
-                _connectionString.Split(';')
-                .Select(e => e.Split('='))
-                .ToDictionary(e => e[0].Trim(), e => e[1].Trim());
+            _scope = busResolveScope;
+            _loopbackVHost = loopbackVHost;
         }
 
         protected override void Load(ContainerBuilder builder)
         {
+
             builder
-                .Register(e => RabbitHutch.CreateBus(_connectionString))
-                .As<IBus>()
-                .SingleInstance();
+                .Register(e => RabbitHutch.CreateBus(@"host=192.168.1.64;timeout=120;virtualHost=ISSync;username=test;password=test"))
+                .Named<IBus>(Buses.ISSync)
+                .InstancePerMatchingLifetimeScope(_scope);
+
+            builder
+                .Register(e => RabbitHutch.CreateBus(@"host=192.168.1.64;timeout=120;virtualHost=/;username=test;password=test"))
+                .Named<IBus>(Buses.Messaging)
+                .InstancePerMatchingLifetimeScope(_scope);
+
+            if (!string.IsNullOrWhiteSpace(_loopbackVHost))
+            {
+                builder
+                    .Register(e => RabbitHutch.CreateBus($@"host=192.168.1.64;timeout=120;virtualHost={_loopbackVHost};username=test;password=test"))
+                    .Named<IBus>(Buses.Loopback)
+                    .InstancePerMatchingLifetimeScope(_scope);
+            }
+
+            builder
+                .Register(e => new ISClient(e.ResolveNamed<IBus>(Buses.ISSync)))
+                .InstancePerMatchingLifetimeScope(_scope);
 
             base.Load(builder);
-        }
-
-        private string GetOrNull(string key)
-        {
-            string val;
-            return _parsedConnectionString.TryGetValue(key, out val) ? val : null;
         }
     }
 }

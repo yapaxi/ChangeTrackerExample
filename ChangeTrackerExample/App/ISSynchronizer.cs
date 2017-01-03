@@ -78,6 +78,7 @@ namespace ChangeTrackerExample.App
         {
             var request = FormatRequest();
 
+            Console.WriteLine("Sending sync request...");
             var response = _client.SyncMetadata(request);
             Console.WriteLine("Sync request sent");
 

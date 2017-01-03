@@ -26,6 +26,7 @@ namespace ChangeTrackerExample.App
         {
             var properties = CreateProperties<TSource>();
             _bus.Advanced.Publish(_exchange, "", false, properties, BitConverter.GetBytes(id));
+            Console.WriteLine($"Sent to loopback: {id}");
         }
 
         private MessageProperties CreateProperties<TSource>()

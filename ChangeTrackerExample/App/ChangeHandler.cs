@@ -53,6 +53,7 @@ namespace ChangeTrackerExample.App
                 var bytes = GetBytes(json);
 
                 _bus.Advanced.Publish(config.DestinationExchange, "", false, properties, bytes);
+                Console.WriteLine($"Sent to destination: {id}");
             }
         }
 

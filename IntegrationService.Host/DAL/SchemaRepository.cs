@@ -32,17 +32,25 @@ namespace IntegrationService.Host.DAL
         {
             return _context.Database.BeginTransaction();
         }
-        
-        public void CreateStagingTable(string name, TableColumnDefinition[] columns)
+
+        public DbContextTransaction BeginTransaction(IsolationLevel level)
         {
-            MoveOldTableIfExists(name);
-            CreateTable(name, columns);
+            return _context.Database.BeginTransaction(level);
         }
 
-        private void CreateTable(string name, TableColumnDefinition[] columns)
+        public StagingTable CreateStagingTable(string name, TableColumnDefinition[] columns)
         {
-            var sql = GetTableCreateSql(name, columns);
+            MoveOldTableIfExists(name);
+            var tableName = CreateStagingTableInternal(name, columns);
+            return new StagingTable(tableName);
+        }
+
+        private string CreateStagingTableInternal(string name, TableColumnDefinition[] columns)
+        {
+            string tableName;
+            var sql = GetStagingTableCreateSql(name, columns, out tableName);
             _context.Database.ExecuteSqlCommand(sql);
+            return tableName;
         }
 
         private void MoveOldTableIfExists(string name)
@@ -62,12 +70,13 @@ namespace IntegrationService.Host.DAL
             }
         }
 
-        private static string GetTableCreateSql(string name, TableColumnDefinition[] columns)
+        private static string GetStagingTableCreateSql(string name, TableColumnDefinition[] columns, out string tableName)
         {
             const string indent = "    ";
             var builder = new StringBuilder();
 
-            builder.AppendLine($"create table [staging].[{name}]");
+            tableName = $"[{STAGING_SCHEMA_NAME}].[{name}]";
+            builder.AppendLine($"create table {tableName}");
             builder.AppendLine("(");
             foreach (var column in columns)
             {

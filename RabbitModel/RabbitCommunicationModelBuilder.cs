@@ -27,18 +27,6 @@ namespace RabbitModel
             _advancedBus.Bind(e, q, "");
         }
 
-        public void BuildTrackerLoopback(string inputName, string outputName)
-        {
-            if (string.IsNullOrWhiteSpace(inputName))
-            {
-                throw new ArgumentNullException(nameof(inputName));
-            }
-
-            var e = _advancedBus.ExchangeDeclare(inputName, "direct", durable: true);
-            var q = _advancedBus.QueueDeclare(outputName, durable: true);
-            _advancedBus.Bind(e, q, "");
-        }
-
         public IExchange BuildTrackerToISContract(string inputName, string outputName)
         {
             if (string.IsNullOrWhiteSpace(inputName))

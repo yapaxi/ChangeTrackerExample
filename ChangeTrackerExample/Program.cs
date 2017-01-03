@@ -23,16 +23,20 @@ namespace ChangeTrackerExample
 {
     public class Program
     {
-        private static readonly string RABBIT_URI = ConfigurationManager.ConnectionStrings["rabbitUri"].ConnectionString;
-
         public static void Main(string[] args)
         {
+            var rootScope = "root";
             var trackerLoopbackExchange = ConfigurationManager.ConnectionStrings["CTLoopbackExchange"].ConnectionString;
             var trackerLoopbackQueue = ConfigurationManager.ConnectionStrings["CTLoopbackQueue"].ConnectionString;
-
+            
             var containerBuilder = new ContainerBuilder();
 
-            containerBuilder.RegisterModule(new RabbitAutofacModule(RABBIT_URI));
+            var module = new RabbitAutofacModule(
+                busResolveScope: rootScope,
+                loopbackVHost: "ChangeTrackerExample"
+            );
+
+            containerBuilder.RegisterModule(module);
 
             RegisterDB(containerBuilder);
             RegisterIS(containerBuilder);
@@ -40,13 +44,16 @@ namespace ChangeTrackerExample
             RegisterHandlers(trackerLoopbackExchange, trackerLoopbackQueue, containerBuilder);
 
             using (var container = containerBuilder.Build())
-            using (var scope = container.BeginLifetimeScope())
+            using (var scope = container.BeginLifetimeScope(rootScope))
             {
                 scope.Resolve<ISSynchronizer>().Start();
 
-                var rabcom = new RabbitCommunicationModelBuilder(scope.Resolve<IBus>().Advanced);
+                var rabcom = new RabbitCommunicationModelBuilder(scope.ResolveNamed<IBus>(Buses.Messaging).Advanced);
 
-                rabcom.BuildTrackerLoopback(trackerLoopbackExchange, trackerLoopbackQueue);
+                BuildTrackerLoopback(
+                    scope.ResolveNamed<IBus>(Buses.Loopback).Advanced,
+                    trackerLoopbackExchange,
+                    trackerLoopbackQueue);
 
                 foreach (var config in scope.Resolve<IEnumerable<EntityConfig>>())
                 {
@@ -57,10 +64,16 @@ namespace ChangeTrackerExample
                 RunBlockingDebugGenerator(scope);
             }
         }
-        
+
+        private static void BuildTrackerLoopback(IAdvancedBus bus, string trackerLoopbackExchange, string trackerLoopbackQueue)
+        {
+            var e = bus.ExchangeDeclare(trackerLoopbackExchange, "direct", durable: true);
+            var q = bus.QueueDeclare(trackerLoopbackQueue, durable: true);
+            bus.Bind(e, q, "");
+        }
+
         private static void RegisterIS(ContainerBuilder containerBuilder)
         {
-            containerBuilder.RegisterType<ISClient>().SingleInstance();
             containerBuilder.Register(e =>
             {
                 var sync = new ISSynchronizer(e.Resolve<ISClient>(), e.Resolve<IEnumerable<EntityConfig>>());
@@ -86,26 +99,20 @@ namespace ChangeTrackerExample
                 var range = Enumerable.Range(0, 128).ToArray();
                 while (true)
                 {
-                    var lst = new List<SomeEntity>(CNT_PER_BATCH);
-                    for (int i = 0; i < CNT_PER_BATCH; i++)
+                    var entity = context.SomeEntities.Add(new SomeEntity()
                     {
-                        var entity = context.SomeEntities.Add(new SomeEntity()
-                        {
-                            Int32 = rnd.Next(0, 1024),
-                            Int64 = rnd.Next(0, 1024),
-                            Guid = Guid.NewGuid(),
-                            ShortString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
-                            MaxString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray())
-                        });
-                        lst.Add(entity);
-                    }
+                        Int32 = rnd.Next(0, 1024),
+                        Int64 = rnd.Next(0, 1024),
+                        Guid = Guid.NewGuid(),
+                        ShortString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
+                        MaxString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray())
+                    });
 
                     context.SaveChanges();
+                    Console.WriteLine($"Generated: {entity.Id}");
 
-                    foreach (var entity in lst)
-                    {
-                        notifier.NotifyChanged<SomeEntity>(entity.Id);
-                    }
+                    Thread.Sleep(1000);
+                    notifier.NotifyChanged<SomeEntity>(entity.Id);
                 }
 
             }
@@ -137,18 +144,18 @@ namespace ChangeTrackerExample
         private static void RegisterHandlers(string loopbackExchange, string loopbackQueue, ContainerBuilder containerBuilder)
         {
             containerBuilder.Register(e => new LoopbackListener(
-                bus: e.Resolve<IBus>(),
+                bus: e.ResolveNamed<IBus>(Buses.Loopback),
                 queue: new Queue(loopbackQueue, false)
             )).InstancePerLifetimeScope();
             
             containerBuilder.Register(e => new ChangeHandler(
                 config: e.Resolve<EntityGroupedConfig>(),
                 context: e.Resolve<SourceContext>(),
-                bus: e.Resolve<IBus>()
+                bus: e.ResolveNamed<IBus>(Buses.Messaging)
             )).InstancePerLifetimeScope();
 
             containerBuilder.Register(e => new LoopbackNotifier(
-                bus: e.Resolve<IBus>(),
+                bus: e.ResolveNamed<IBus>(Buses.Loopback),
                 exchange: new Exchange(loopbackExchange)
             ));
         }

@@ -55,7 +55,9 @@ namespace ChangeTrackerExample.App
         private void HandleEntityChangedMessage(MessageProperties properties, byte[] body)
         {
             var type = Encoding.UTF8.GetString((byte[])properties.Headers[LoopbackMessageHeader.MESSAGE_TYPE]);
-            EntityChanged(this, new EntityChangedEventArgs(BitConverter.ToInt32(body, 0), type));
+            var id = BitConverter.ToInt32(body, 0);
+            Console.WriteLine($"Loopback accepted: {id}");
+            EntityChanged(this, new EntityChangedEventArgs(id, type));
         }
 
         public void Dispose()

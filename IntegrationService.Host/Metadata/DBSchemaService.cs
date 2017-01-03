@@ -22,19 +22,42 @@ namespace IntegrationService.Host.Metadata
             _repository = repository;
         }
 
-        public void ActivateSchema(string name, string queueName, MappingSchema schema)
+        public SchemaActivationResult ActivateSchema(string name, string queueName, MappingSchema schema)
         {
-            lock (_lock)
+            try
             {
-                using (var tran = _repository.BeginTransaction())
+                lock (_lock)
                 {
-                    ActivateSchemaInternal(name, queueName, schema);
-                    tran.Commit();
+                    using (var tran = _repository.BeginTransaction())
+                    {
+                        var stagingTable = ActivateSchemaInternal(name, queueName, schema);
+
+                        tran.Commit();
+
+                        return new SchemaActivationResult()
+                        {
+                            StagingTable = stagingTable,
+                            Name = name,
+                        };
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                return new SchemaActivationResult()
+                {
+                    Exception = e,
+                    Name = name,
+                };
             }
         }
 
-        public void ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
+        public Mapping[] GetActiveMappings()
+        {
+            return _repository.Mappings.Where(e => e.IsActive).ToArray();
+        }
+
+        private StagingTable ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
         {
             var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
 
@@ -44,21 +67,22 @@ namespace IntegrationService.Host.Metadata
             {
                 if (existing.IsActive)
                 {
-                    return;
+                    return new StagingTable(existing.StagingTableName);
                 }
                 else
                 {
-                    CreateTable(name, schema.Properties);
+                    var stagingTable = CreateTable(name, schema.Properties);
 
                     DeactivateAll(mappings);
                     Activate(existing);
 
                     _repository.SaveChanges();
+                    return stagingTable;
                 }
             }
             else
             {
-                CreateTable(name, schema.Properties);
+                var stagingTable = CreateTable(name, schema.Properties);
 
                 DeactivateAll(mappings);
 
@@ -69,16 +93,18 @@ namespace IntegrationService.Host.Metadata
                     CreatedAt = DateTime.UtcNow,
                     Name = name,
                     QueueName = queueName,
-                    Schema = JsonConvert.SerializeObject(schema.Properties),
+                    SchemaProperties = JsonConvert.SerializeObject(schema.Properties),
+                    StagingTableName = stagingTable.Name
                 });
 
                 _repository.SaveChanges();
+                return stagingTable;
             }
         }
 
-        private void CreateTable(string name, MappingProperty[] newSchema)
+        private StagingTable CreateTable(string name, MappingProperty[] newSchema)
         {
-            _repository.CreateStagingTable(name, newSchema.Select(e => new TableColumnDefinition()
+            return _repository.CreateStagingTable(name, newSchema.Select(e => new TableColumnDefinition()
             {
                 Name = e.Name,
                 IsNullable = IsNullable(e.ClrType),

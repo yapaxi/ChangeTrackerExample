@@ -72,8 +72,14 @@
     <Compile Include="DAL\DDL\TableColumnDefinition.cs" />
     <Compile Include="DAL\SchemaRepository.cs" />
     <Compile Include="Domain\Mapping.cs" />
+    <Compile Include="Listeners\ListenerHost.cs" />
+    <Compile Include="Listeners\RawMessageHandler.cs" />
+    <Compile Include="Buses.cs" />
+    <Compile Include="Metadata\ActivatedSchemaEventArgs.cs" />
     <Compile Include="Metadata\ISSynchronizerHost.cs" />
     <Compile Include="Metadata\DBSchemaService.cs" />
+    <Compile Include="DAL\StagingTable.cs" />
+    <Compile Include="Metadata\SchemaActivationResult.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DAL\Contexts\SchemaContext.cs" />
@@ -96,9 +102,7 @@
       <Name>RabbitModel</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Listeners\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
