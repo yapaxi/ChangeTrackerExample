@@ -18,11 +18,13 @@ namespace IntegrationService.Host.DAL
             _dataContext = dataContext;
         }
 
-        public void Insert(string tableName, SqlParameter[] parameters)
+        public void Insert(string tableName, KeyValuePair<string, object>[] keyValues)
         {
-            var columns = string.Join(",", parameters.Select(e => e.ParameterName).ToArray());
-            var prs = string.Join(",", parameters.Select(e => "@" + e.ParameterName).ToArray());
-            _dataContext.Database.ExecuteSqlCommand($"insert into {tableName} ({columns}) values ({prs})", parameters);
+            var columns = string.Join(",", keyValues.Select(e => e.Key).ToArray());
+            var prs = string.Join(",", keyValues.Select(e => "@" + e.Key).ToArray());
+            _dataContext.Database.ExecuteSqlCommand(
+                $"insert into {tableName} ({columns}) values ({prs})",
+                keyValues.Select(e => new SqlParameter(e.Key, e.Value)).ToArray());
         }
     }
 }

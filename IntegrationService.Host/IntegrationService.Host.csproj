@@ -69,6 +69,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Converters\IConverter.cs" />
     <Compile Include="DAL\Contexts\DataContext.cs" />
     <Compile Include="DAL\DataRepository.cs" />
     <Compile Include="DAL\DDL\TableColumnDefinition.cs" />
@@ -77,6 +78,7 @@
     <Compile Include="Listeners\ListenerHost.cs" />
     <Compile Include="Converters\FlatMessageConverter.cs" />
     <Compile Include="Buses.cs" />
+    <Compile Include="Listeners\Subscription.cs" />
     <Compile Include="Metadata\ActivatedSchemaEventArgs.cs" />
     <Compile Include="Metadata\ISSynchronizerHost.cs" />
     <Compile Include="Metadata\DBSchemaService.cs" />

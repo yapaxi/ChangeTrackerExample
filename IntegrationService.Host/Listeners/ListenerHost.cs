@@ -11,10 +11,11 @@ using EasyNetQ.Topology;
 using IntegrationService.Host.DAL.Contexts;
 using IntegrationService.Host.Converters;
 using System.Threading;
+using RabbitModel;
 
 namespace IntegrationService.Host.Listeners
 {
-    public class ListenerHost : IDisposable
+    public partial class ListenerHost : IDisposable
     {
         private readonly IBus _bus;
         private readonly ILifetimeScope _scope;
@@ -35,7 +36,7 @@ namespace IntegrationService.Host.Listeners
         {
             if (_disposed)
             {
-                return;
+                throw new ObjectDisposedException(nameof(ListenerHost));
             }
 
             lock (_lock)
@@ -58,7 +59,7 @@ namespace IntegrationService.Host.Listeners
         {
             if (_disposed)
             {
-                return;
+                throw new ObjectDisposedException(nameof(ListenerHost));
             }
 
             lock (_lock)
@@ -77,6 +78,7 @@ namespace IntegrationService.Host.Listeners
                 
                 var converter = new FlatMessageConverter(schema);
                 var subscription = new Subscription(this, queue, converter, stagingTable);
+
                 _subscriptions.Add(entityName, subscription);
             }
         }
@@ -94,66 +96,6 @@ namespace IntegrationService.Host.Listeners
             }
         }
 
-
-        private class Subscription : IDisposable
-        {
-            private int _disposed;
-
-            private readonly IDisposable _consumerSubscription;
-            private readonly FlatMessageConverter _converter;
-            private readonly StagingTable _stagingTable;
-            private readonly ListenerHost _host;
-            private readonly string _queue;
-
-            public Subscription(ListenerHost host, string queue, FlatMessageConverter converter, StagingTable stagingTable)
-            {
-                _host = host;
-                _stagingTable = stagingTable;
-                _converter = converter;
-                _disposed = 0;
-                _queue = queue;
-                _consumerSubscription = _host._bus.Advanced.Consume(
-                    new Queue(queue, false),
-                    (data, properties, info) => ConsumerRoutine(data, properties, info)
-                );
-            }
-
-            private void ConsumerRoutine(byte[] data, MessageProperties properties, MessageReceivedInfo info)
-            {
-                if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
-                {
-                    return;
-                }
-
-                try
-                {
-                    var parameters = _converter.Convert(data, properties, info);
-                    using (var dataInsertionScope = _host._scope.BeginLifetimeScope())
-                    {
-                        Console.WriteLine($"Inserting data. Version={_converter.Schema.Checksum}");
-                        dataInsertionScope.Resolve<DataRepository>().Insert(_stagingTable.Name, parameters);
-                        Console.WriteLine($"Inserted data. Version={_converter.Schema.Checksum}");
-                    }
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    throw;
-                }
-            }
-
-            public void Dispose()
-            {
-                Console.WriteLine($"Closing {this}");
-                Interlocked.Exchange(ref _disposed, 1);
-                _consumerSubscription.Dispose();
-            }
-
-            public override string ToString()
-            {
-                return $"Subscription for queue {_queue} to table {_stagingTable.Name} for schema version {_converter.Schema.Checksum}";
-            }
-        }
 
     }
 }

@@ -3,19 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Common;
-using IntegrationService.Host.DAL;
 using RabbitModel;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.IO;
 using ResolvedMapping = System.Tuple<Common.MappingProperty, System.Type>;
-using System.Data.SqlClient;
 
 namespace IntegrationService.Host.Converters
 {
-    public class FlatMessageConverter
+    public class FlatMessageConverter : IConverter
     {
         private readonly Guid _runtimeId = Guid.NewGuid();
         private readonly Dictionary<string, ResolvedMapping> _schemaProperties;
@@ -28,12 +25,9 @@ namespace IntegrationService.Host.Converters
             _schemaProperties = schema.Properties.ToDictionary(e => e.Name, e => new ResolvedMapping(e, Type.GetType(e.ClrType)));
         }
 
-        public SqlParameter[] Convert(byte[] data, MessageProperties properties, MessageReceivedInfo info)
+        public KeyValuePair<string, object>[] Convert(byte[] data)
         {
-            var id = (int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID];
-            var lst = new List<SqlParameter>(_schemaProperties.Count);
-
-            Console.WriteLine($"[{_runtimeId}] Executing converter for message: id={id}");
+            var lst = new List<KeyValuePair<string, object>>(_schemaProperties.Count);
 
             using (var r = new JsonTextReader(new StringReader(Encoding.Unicode.GetString(data))))
             {
@@ -45,17 +39,17 @@ namespace IntegrationService.Host.Converters
                     switch (r.TokenType)
                     {
                         case JsonToken.String:
-                            lst.Add(new SqlParameter(propertyName, r.Value));
+                            lst.Add(new KeyValuePair<string, object>(propertyName, r.Value));
                             break;
                         case JsonToken.Boolean:
-                            lst.Add(new SqlParameter(propertyName, r.Value));
+                            lst.Add(new KeyValuePair<string, object>(propertyName, r.Value));
                             break;
                         case JsonToken.Date:
-                            lst.Add(new SqlParameter(propertyName, r.Value));
+                            lst.Add(new KeyValuePair<string, object>(propertyName, r.Value));
                             break;
                         case JsonToken.Float:
                         case JsonToken.Integer:
-                            lst.Add(new SqlParameter(propertyName, System.Convert.ChangeType(r.Value, mapping.Item2)));
+                            lst.Add(new KeyValuePair<string, object>(propertyName, System.Convert.ChangeType(r.Value, mapping.Item2)));
                             break;
                         case JsonToken.PropertyName:
                             propertyName = (string)r.Value;
