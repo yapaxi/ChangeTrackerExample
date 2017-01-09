@@ -78,15 +78,14 @@ namespace ChangeTrackerExample.Configuration
                 {
                     continue;
                 }
-                
-                if (p.PropertyType.IsPrimitive || 
-                    p.PropertyType == typeof(string) || 
-                    p.PropertyType == typeof(Guid))
+
+                string typeName;
+                if (IsNativeType(p.PropertyType, out typeName))
                 {
                     lst.Add(new MappingProperty()
                     {
                         Name = p.Name,
-                        ClrType = p.PropertyType.FullName,
+                        ClrType = typeName,
                         Size = attrs.OfType<MaxLengthAttribute>().FirstOrDefault()?.Length,
                         Children = new MappingProperty[0]
                     });
@@ -103,8 +102,26 @@ namespace ChangeTrackerExample.Configuration
             return lst.ToArray();
         }
 
+        private static bool IsNativeType(Type t, out string name)
+        {
+            if (!t.IsGenericType)
+            {
+                name = t.FullName;
+                return t.IsPrimitive || t == typeof(string) || t == typeof(Guid);
+            }
+            else if (t.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                return IsNativeType(t.GetGenericArguments()[0], out name);
+            }
+            else
+            {
+                name = null;
+                return false;
+            }
+        }
+
         #region IBoundedMappedEntity
-        
+
         public Type ContextType => typeof(TSourceContext);
         public Type SourceType => typeof(TSource);
         public Type TargetType { get; }

@@ -69,11 +69,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DAL\Contexts\DataContext.cs" />
+    <Compile Include="DAL\DataRepository.cs" />
     <Compile Include="DAL\DDL\TableColumnDefinition.cs" />
     <Compile Include="DAL\SchemaRepository.cs" />
     <Compile Include="Domain\Mapping.cs" />
     <Compile Include="Listeners\ListenerHost.cs" />
-    <Compile Include="Listeners\RawMessageHandler.cs" />
+    <Compile Include="Listeners\FlatMessageConverter.cs" />
     <Compile Include="Buses.cs" />
     <Compile Include="Metadata\ActivatedSchemaEventArgs.cs" />
     <Compile Include="Metadata\ISSynchronizerHost.cs" />

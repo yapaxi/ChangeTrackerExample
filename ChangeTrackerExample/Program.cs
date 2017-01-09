@@ -111,7 +111,7 @@ namespace ChangeTrackerExample
                     context.SaveChanges();
                     Console.WriteLine($"Generated: {entity.Id}");
 
-                    Thread.Sleep(1000);
+                    //Thread.Sleep(1000);
                     notifier.NotifyChanged<SomeEntity>(entity.Id);
                 }
 
@@ -172,6 +172,7 @@ namespace ChangeTrackerExample
                 {
                     Id = e.Id,
                     Guid = e.Guid,
+                    Guid2 = e.Guid,
                     Int32 = e.Int32,
                     Int64 = e.Int64,
                     YYY = e.MaxString,

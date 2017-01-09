@@ -27,8 +27,10 @@ namespace IntegrationService.Host
 
             containerBuilder.RegisterModule(new RabbitAutofacModule(rootScope));
 
-            containerBuilder.Register(e => new SchemaContext(@"server =.\sqlexpress;database=SchemaDB;integrated security=SSPI"));
+            containerBuilder.Register(e => new SchemaContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
+            containerBuilder.Register(e => new DataContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
             containerBuilder.RegisterType<SchemaRepository>();
+            containerBuilder.RegisterType<DataRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
 
             using (var container = containerBuilder.Build())

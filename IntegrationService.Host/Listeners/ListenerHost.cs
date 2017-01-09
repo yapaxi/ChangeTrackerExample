@@ -8,6 +8,7 @@ using Common;
 using IntegrationService.Host.DAL;
 using EasyNetQ;
 using EasyNetQ.Topology;
+using IntegrationService.Host.DAL.Contexts;
 
 namespace IntegrationService.Host.Listeners
 {
@@ -50,8 +51,25 @@ namespace IntegrationService.Host.Listeners
                 }
 
                 Console.WriteLine($"Creating new subscription for {entityName} -> {stagingTable.Name}");
-                var handler = new RawMessageHandler(schema.Properties, stagingTable);
-                var subscr = _bus.Advanced.Consume(new Queue(queue, false), (data, properties, info) => handler.Handle(data, properties, info));
+
+
+                var handler = new FlatMessageConverter(schema.Properties);
+                var subscr = _bus.Advanced.Consume(new Queue(queue, false), (data, properties, info) =>
+                {
+                    try
+                    {
+                        var parameters = handler.Convert(data, properties, info);
+                        using (var dataInsertionScope = _scope.BeginLifetimeScope())
+                        {
+                            dataInsertionScope.Resolve<DataRepository>().Insert(stagingTable.Name, parameters);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        throw;
+                    }
+                });
                 _subscriptions[entityName] = subscr;
             }
         }

@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 14 for Web
+# Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChangeTrackerExample", "ChangeTrackerExample\ChangeTrackerExample.csproj", "{825A7AEC-824C-4571-A085-2FB9ADD5275C}"
@@ -14,6 +14,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationService.Client", "IntegrationService.Client\IntegrationService.Client.csproj", "{5CD2E4FA-CDC2-4101-8CA7-FA5E239822BD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationService.Contracts", "IntegrationService.Contracts\IntegrationService.Contracts.csproj", "{11A292A5-1706-4CE4-9CB1-38C7F6EEC784}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scripts", "Scripts", "{C8718CE0-3CC5-47C9-8832-0F72FD3AC0B7}"
+	ProjectSection(SolutionItems) = preProject
+		client.bat = client.bat
+		IS.bat = IS.bat
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

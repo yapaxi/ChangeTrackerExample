@@ -49,7 +49,7 @@ namespace ChangeTrackerExample.App
                 properties.Headers[ISMessageHeader.SCHEMA_CHECKSUM] = config.Entity.MappingSchema.Checksum;
                 properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID] = id;
 
-                var json = JsonConvert.SerializeObject(mappedEntity);
+                var json = JsonConvert.SerializeObject(mappedEntity, Formatting.None);
                 var bytes = GetBytes(json);
 
                 _bus.Advanced.Publish(config.DestinationExchange, "", false, properties, bytes);
