@@ -172,7 +172,7 @@ namespace ChangeTrackerExample
                 {
                     Id = e.Id,
                     Guid = e.Guid,
-                    Guid2 = e.Guid,
+                    a22523 = 1,
                     Int32 = e.Int32,
                     Int64 = e.Int64,
                     YYY = e.MaxString,

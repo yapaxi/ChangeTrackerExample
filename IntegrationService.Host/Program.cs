@@ -38,6 +38,7 @@ namespace IntegrationService.Host
             using (var syncHost = new ISSynchronizerHost(scope))
             using (var listenHost = new ListenerHost(scope))
             {
+                syncHost.OnDeactivatedSchema += (s, e) => listenHost.Reject(e.EntityName);
                 syncHost.OnActivatedSchema += (s, e) => listenHost.Accept(e.EntityName, e.Queue, e.Schema, e.StagingTable);
 
                 syncHost.RecoverKnownSchemas();

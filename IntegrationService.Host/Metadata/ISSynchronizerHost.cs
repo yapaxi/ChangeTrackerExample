@@ -26,6 +26,7 @@ namespace IntegrationService.Host.Metadata
         }
 
         public event EventHandler<ActivatedSchemaEventArgs> OnActivatedSchema;
+        public event EventHandler<SchemaEventArgs> OnDeactivatedSchema;
 
         public void RecoverKnownSchemas()
         {
@@ -59,6 +60,12 @@ namespace IntegrationService.Host.Metadata
                 lock (_lock)
                 {
                     Console.WriteLine("Accepted sync request");
+
+                    foreach (var v in request.Items)
+                    {
+                        OnDeactivatedSchema?.Invoke(this, new SchemaEventArgs(v.Name));
+                    }
+
                     var activationResult = ActivateSchemas(request.Items);
 
                     foreach (var activatedSchema in activationResult.Where(e => !e.IsFailed))

@@ -13,16 +13,19 @@ using System.IO;
 using ResolvedMapping = System.Tuple<Common.MappingProperty, System.Type>;
 using System.Data.SqlClient;
 
-namespace IntegrationService.Host.Listeners
+namespace IntegrationService.Host.Converters
 {
     public class FlatMessageConverter
     {
         private readonly Guid _runtimeId = Guid.NewGuid();
         private readonly Dictionary<string, ResolvedMapping> _schemaProperties;
+        public  MappingSchema Schema { get; }
 
-        public FlatMessageConverter(MappingProperty[] schemaProperties)
+        public FlatMessageConverter(MappingSchema schema)
         {
-            this._schemaProperties = schemaProperties.ToDictionary(e => e.Name, e => new ResolvedMapping(e, Type.GetType(e.ClrType)));
+            Schema = schema;
+
+            _schemaProperties = schema.Properties.ToDictionary(e => e.Name, e => new ResolvedMapping(e, Type.GetType(e.ClrType)));
         }
 
         public SqlParameter[] Convert(byte[] data, MessageProperties properties, MessageReceivedInfo info)

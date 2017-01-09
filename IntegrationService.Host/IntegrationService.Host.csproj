@@ -75,7 +75,7 @@
     <Compile Include="DAL\SchemaRepository.cs" />
     <Compile Include="Domain\Mapping.cs" />
     <Compile Include="Listeners\ListenerHost.cs" />
-    <Compile Include="Listeners\FlatMessageConverter.cs" />
+    <Compile Include="Converters\FlatMessageConverter.cs" />
     <Compile Include="Buses.cs" />
     <Compile Include="Metadata\ActivatedSchemaEventArgs.cs" />
     <Compile Include="Metadata\ISSynchronizerHost.cs" />

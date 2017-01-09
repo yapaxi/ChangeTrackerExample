@@ -59,7 +59,7 @@ namespace IntegrationService.Host.Metadata
 
             if (existing != null)
             {
-                Console.WriteLine("Existing found");
+                Console.WriteLine("Existing table found");
                 if (existing.IsActive)
                 {
                     Console.WriteLine("Already active, nothing to do");
@@ -87,7 +87,7 @@ namespace IntegrationService.Host.Metadata
                     throw new Exception($"Schema change is rejected, because it was issued before last known schema. {times}");
                 }
 
-                Console.WriteLine("Exiting not found");
+                Console.WriteLine("Existing table not found");
 
                 var stagingTable = CreateTable(name, schema.Properties);
 
@@ -162,7 +162,7 @@ namespace IntegrationService.Host.Metadata
             existing.IsActive = true;
         }
 
-        private static void DeactivateAll(Domain.Mapping[] mappings)
+        private static void DeactivateAll(Mapping[] mappings)
         {
             foreach (var m in mappings)
             {
