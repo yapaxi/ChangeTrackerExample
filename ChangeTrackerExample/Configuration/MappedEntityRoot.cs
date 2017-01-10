@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -109,6 +110,11 @@ namespace ChangeTrackerExample.Configuration
                         {
                             var collectionElementType = p.PropertyType.GetGenericArguments()[0];
                             complex.Children = GetProperties(collectionElementType, p.Name);
+                            lst.Add(complex);
+                        }
+                        else if (p.PropertyType.GetCustomAttributes(false).OfType<CompilerGeneratedAttribute>().Any())
+                        {
+                            complex.Children = GetProperties(p.PropertyType, p.Name);
                             lst.Add(complex);
                         }
                         else

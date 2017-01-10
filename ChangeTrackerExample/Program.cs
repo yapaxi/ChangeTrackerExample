@@ -181,15 +181,23 @@ namespace ChangeTrackerExample
                 e.Guid,
                 Z = e.Int32*1235,
                 Lines = e.Lines,
+                Object = new
+                {
+                    Id = e.Id,
+                    EntityId = e.Id,
+                    X = 1,
+                    GGGHH = 34343
+                },
                 SuperLines = e.SuperLines.Select(z => new
                 {
                     Id = z.Id,
                     CoolForeignKey = z.EntityId,
                     MegaString = z.SuperString,
-                    hhh = 3453454
+                    hhh = 3453454,
                 })
             })
             .WithChild(e => e.Lines, e => e.EntityId)
+            .WithChild(e => e.Object, e => e.EntityId)
             .WithChild(e => e.SuperLines, e => e.CoolForeignKey);
 
             var mappedEntity = root.Named("some-entity");
