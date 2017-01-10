@@ -14,72 +14,102 @@ namespace IntegrationService.Host.Converters
 {
     public class FlatMessageConverter : IConverter
     {
+        private readonly Dictionary<string, Type> _typeCache;
         private readonly Guid _runtimeId = Guid.NewGuid();
-        private readonly Dictionary<string, ResolvedMapping> _schemaProperties;
-        public  MappingSchema Schema { get; }
+        public RuntimeMappingSchema RuntimeSchema { get; }
 
-        public FlatMessageConverter(MappingSchema schema)
+        public FlatMessageConverter(RuntimeMappingSchema runtimeSchema)
         {
-            Schema = schema;
-
-            _schemaProperties = schema.Properties.ToDictionary(e => e.Name, e => new ResolvedMapping(e, Type.GetType(e.ClrType)));
+            RuntimeSchema = runtimeSchema;
+            _typeCache = RuntimeSchema.FlatProperties.Select(e => e.Value.ClrType).Where(e => e != null).Distinct().ToDictionary(e => e, e => Type.GetType(e));
         }
 
-        public KeyValuePair<string, object>[] Convert(byte[] data)
+        public Dictionary<string, List<Dictionary<string, object>>> Convert(byte[] data)
         {
-            var lst = new List<KeyValuePair<string, object>>(_schemaProperties.Count);
+            var properties = RuntimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>());
 
             using (var r = new JsonTextReader(new StringReader(Encoding.Unicode.GetString(data))))
             {
-                int level = 0;
-                string propertyName = null;
-                ResolvedMapping mapping = null;
+                string currentProperty = null;
+                var pathStack = new Stack<string>();
+                var lineStack = new Stack<Dictionary<string, object>>();
                 while (r.Read())
                 {
                     switch (r.TokenType)
                     {
                         case JsonToken.String:
-                            lst.Add(new KeyValuePair<string, object>(propertyName, r.Value));
+                            lineStack.Peek().Add(currentProperty, r.Value);
                             break;
                         case JsonToken.Boolean:
-                            lst.Add(new KeyValuePair<string, object>(propertyName, r.Value));
+                            lineStack.Peek().Add(currentProperty, r.Value);
                             break;
                         case JsonToken.Date:
-                            lst.Add(new KeyValuePair<string, object>(propertyName, r.Value));
+                            lineStack.Peek().Add(currentProperty, r.Value);
                             break;
                         case JsonToken.Float:
                         case JsonToken.Integer:
-                            lst.Add(new KeyValuePair<string, object>(propertyName, System.Convert.ChangeType(r.Value, mapping.Item2)));
+                            var path = RemoveArrayElement(r.Path);
+                            MappingProperty mapping;
+                            if (!RuntimeSchema.FlatProperties.TryGetValue(path, out mapping))
+                            {
+                                Console.WriteLine($"[{_runtimeId}] Unexpected property: {path}. Convertion is aborted.");
+                                return null;
+                            }
+                            lineStack.Peek().Add(currentProperty, System.Convert.ChangeType(r.Value, _typeCache[mapping.ClrType]));
                             break;
                         case JsonToken.PropertyName:
-                            propertyName = (string)r.Value;
-                            if (!_schemaProperties.TryGetValue(propertyName, out mapping))
-                            {
-                                Console.WriteLine($"[{_runtimeId}] Unexpected property name: {propertyName}. Property is ignored.");
-                                r.Skip();
-                            }
+                            currentProperty = (string)r.Value;
                             break;
                         case JsonToken.StartObject:
-                            if (level != 0)
-                            {
-                                Console.WriteLine($"[{_runtimeId}] Unexpected nested level: {level}. Insertion is aborted.");
-                            }
-                            else
-                            {
-                                ++level;
-                            }
+                            pathStack.Push(string.IsNullOrWhiteSpace(r.Path) ? MappingSchema.RootName : RemoveArrayElement(r.Path));
+                            lineStack.Push(new Dictionary<string, object>());
                             break;
                         case JsonToken.EndObject:
-                            --level;
+                            var objectName = pathStack.Peek();
+                            properties[objectName].Add(lineStack.Pop());
+                            pathStack.Pop();
+                            break;
+                        case JsonToken.StartArray:
+                        case JsonToken.EndArray:
+                            break;
+                        case JsonToken.Null:
                             break;
                         default:
-                            Console.WriteLine($"[{_runtimeId}] Unexpected token: {r.TokenType}. Insertion is aborted.");
+                            Console.WriteLine($"[{_runtimeId}] Unexpected token: {r.TokenType}. Convertion is aborted.");
                             return null;
                     }
                 }
             }
 
-            return lst.ToArray();
+            return properties;
+        }
+
+        private static string RemoveArrayElement(string path)
+        {
+            var builder = new StringBuilder();
+            var inBracket = false;
+            for (int i = 0; i < path.Length; i++)
+            {
+                var c = path[i];
+
+                switch (c)
+                {
+                    case '[':
+                        inBracket = true;
+                        break;
+                    case ']':
+                        inBracket = false;
+                        break;
+                    default:
+                        if (!inBracket)
+                        {
+                            builder.Append(c);
+                        }
+                        break;
+                }
+            }
+
+            return builder.ToString();
         }
     }
 }

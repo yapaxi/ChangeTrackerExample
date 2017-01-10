@@ -19,7 +19,7 @@ namespace IntegrationService.Host.Listeners
     {
         private readonly IBus _bus;
         private readonly ILifetimeScope _scope;
-        private Dictionary<string, Subscription> _subscriptions;
+        private readonly Dictionary<string, Subscription> _subscriptions;
         private readonly object _lock;
 
         private bool _disposed;
@@ -55,7 +55,7 @@ namespace IntegrationService.Host.Listeners
             }
         }
 
-        public void Accept(string entityName, string queue, MappingSchema schema, StagingTable stagingTable)
+        public void Accept(string entityName, string queue, RuntimeMappingSchema runtimeSchema, IStagingTable stagingTable)
         {
             if (_disposed)
             {
@@ -71,12 +71,12 @@ namespace IntegrationService.Host.Listeners
                 
                 if (_subscriptions.ContainsKey(entityName))
                 {
-                    throw new InvalidOperationException($"Failed to create subscription for {entityName} -> {stagingTable.Name}, because there is existing one");
+                    throw new InvalidOperationException($"Failed to create subscription for {entityName} -> {stagingTable.FullName}, because there is existing one");
                 }
 
-                Console.WriteLine($"Creating new subscription for {entityName} -> {stagingTable.Name}:{schema.Checksum}");
+                Console.WriteLine($"Creating new subscription for {entityName} -> {stagingTable.FullName}:{runtimeSchema.Schema.Checksum}");
                 
-                var converter = new FlatMessageConverter(schema);
+                var converter = new FlatMessageConverter(runtimeSchema);
                 var subscription = new Subscription(this, queue, converter, stagingTable);
 
                 _subscriptions.Add(entityName, subscription);

@@ -10,7 +10,7 @@ namespace IntegrationService.Host.Metadata
 {
     public class ActivatedSchemaEventArgs : SchemaEventArgs
     {
-        public ActivatedSchemaEventArgs(string entityName, MappingSchema schema, string queue, StagingTable stagingTable)
+        public ActivatedSchemaEventArgs(string entityName, RuntimeMappingSchema schema, string queue, IStagingTable stagingTable)
             : base(entityName)
         {
             Schema = schema;
@@ -18,9 +18,9 @@ namespace IntegrationService.Host.Metadata
             StagingTable = stagingTable;
         }
 
-        public MappingSchema Schema { get; }
+        public RuntimeMappingSchema Schema { get; }
         public string Queue { get; }
-        public StagingTable StagingTable { get; }
+        public IStagingTable StagingTable { get; }
     }
 
 

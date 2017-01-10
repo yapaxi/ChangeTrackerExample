@@ -69,6 +69,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Converters\ConvertedMessage.cs" />
     <Compile Include="Converters\IConverter.cs" />
     <Compile Include="DAL\Contexts\DataContext.cs" />
     <Compile Include="DAL\DataRepository.cs" />

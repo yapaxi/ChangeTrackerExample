@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ChangeTrackerExample.Configuration;
 using IntegrationService.Client;
-using IntegrationService.Contracts.v1;
+using IntegrationService.Contracts.v2;
 using System.Threading;
 using EasyNetQ;
 using ChangeTrackerExample.App.Events;
@@ -65,6 +65,10 @@ namespace ChangeTrackerExample.App
                 OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });
             }
             catch (TimeoutException e)
+            {
+                OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });
+            }
+            catch (Exception e)
             {
                 OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });
             }

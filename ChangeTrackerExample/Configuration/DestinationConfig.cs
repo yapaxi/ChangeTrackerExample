@@ -9,7 +9,6 @@ namespace ChangeTrackerExample.Configuration
 {
     public class DestinationConfig
     {
-        private readonly bool _complexObjectsAllowed;
         private readonly string _rootNamespace;
 
         internal DestinationConfig(string rootNamespace)
@@ -21,21 +20,15 @@ namespace ChangeTrackerExample.Configuration
 
             _rootNamespace = rootNamespace;
         }
-
-        private DestinationConfig(string rootNamespace, bool complexObjectsAllowed)
-        {
-            _rootNamespace = rootNamespace;
-            _complexObjectsAllowed = complexObjectsAllowed;
-        }
-
+        
         public PrefixedDestinationConfig Prefixed(string prefix)
         {
-            return new PrefixedDestinationConfig(_rootNamespace, prefix, _complexObjectsAllowed);
+            return new PrefixedDestinationConfig(_rootNamespace, prefix);
         }
 
         public DestinationConfig ComplexObjectsAllowed()
         {
-            return new DestinationConfig(_rootNamespace, complexObjectsAllowed: true);
+            return new DestinationConfig(_rootNamespace);
         }
     }
 }

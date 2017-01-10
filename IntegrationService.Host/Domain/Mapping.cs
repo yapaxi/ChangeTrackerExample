@@ -34,6 +34,6 @@ namespace IntegrationService.Host.Domain
 
         public virtual DateTime? DeactivatedAt { get; set; }
 
-        public virtual string StagingTableName { get; set; }
+        public virtual string StagingTables { get; set; }
     }
 }

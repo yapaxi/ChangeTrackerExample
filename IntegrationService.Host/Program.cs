@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EasyNetQ.Topology;
 using System.Diagnostics;
-using IntegrationService.Contracts.v1;
+using IntegrationService.Contracts.v2;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.DAL.Contexts;
 using IntegrationService.Host.Metadata;

@@ -105,8 +105,15 @@ namespace ChangeTrackerExample
                         Int64 = rnd.Next(0, 1024),
                         Guid = Guid.NewGuid(),
                         ShortString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
-                        MaxString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray())
+                        MaxString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()),
+                        Lines = new List<Line>(),
+                        SuperLines = new List<SuperLine>()
                     });
+
+                    entity.Lines.Add(new Line() { String = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()) });
+                    entity.Lines.Add(new Line() { String = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()) });
+                    entity.SuperLines.Add(new SuperLine() { SuperString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()) });
+                    entity.SuperLines.Add(new SuperLine() { SuperString = new string(range.Select(e => (char)rnd.Next('A', 'Z')).ToArray()) });
 
                     context.SaveChanges();
                     Console.WriteLine($"Generated: {entity.Id}");
@@ -163,41 +170,33 @@ namespace ChangeTrackerExample
         private static void RegisterEntities(ContainerBuilder containerBuilder)
         {
             var entityBuilder = new EntityBuilder(containerBuilder);
-            var entity = entityBuilder.Entity<SomeEntity>().FromContext<SourceContext>();
 
-            var entityXXX = entity.Map
-            (
-                name: "some-entity", 
-                mapper: e => new
+            var entity = entityBuilder
+                    .Entity<SomeEntity>()
+                    .FromContext<SourceContext>();
+
+            var root = entity.SelectRoot(e => new
+            {
+                Id = e.Id,
+                e.Guid,
+                Z = e.Int32*1235,
+                Lines = e.Lines,
+                SuperLines = e.SuperLines.Select(z => new
                 {
-                    Id = e.Id,
-                    Guid = e.Guid,
-                    b7 = 1,
-                    Int32 = e.Int32,
-                    Int64 = e.Int64,
-                    YYY = e.MaxString,
-                    v15 = e.ShortString
-                }
-            );
+                    Id = z.Id,
+                    CoolForeignKey = z.EntityId,
+                    MegaString = z.SuperString,
+                    hhh = 3453454
+                })
+            })
+            .WithChild(e => e.Lines, e => e.EntityId)
+            .WithChild(e => e.SuperLines, e => e.CoolForeignKey);
 
-            //var entityYYY = entity.Map
-            //(
-            //    name: "some-entity",
-            //    mapper: e => new
-            //    {
-            //        Id = e.Id,
-            //        Guid = e.Guid,
-            //        YYY = e.MaxString,
-            //        Complex = new { e.Int32, e.Int64 }
-            //    }
-            //);
+            var mappedEntity = root.Named("some-entity");
             
-            var root = entityBuilder.DestinationRoot("example-ms");
-            var search = root.ComplexObjectsAllowed().Prefixed("search");
-            var reporting = root.Prefixed("reporting");
+            var reporting = entityBuilder.DestinationRoot("example-ms").Prefixed("reporting");
 
-            entityBuilder.MapEntityToDestination(entityXXX, reporting);
-        //    entityBuilder.MapEntityToDestination(entityYYY, search);
+            entityBuilder.MapEntityToDestination(mappedEntity, reporting);
 
             entityBuilder.Build();
         }

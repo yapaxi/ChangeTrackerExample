@@ -18,7 +18,7 @@ namespace IntegrationService.Host.DAL
             _dataContext = dataContext;
         }
 
-        public void Insert(string tableName, KeyValuePair<string, object>[] keyValues)
+        public void Insert(string tableName, IReadOnlyDictionary<string, object> keyValues)
         {
             var columns = string.Join(",", keyValues.Select(e => e.Key).ToArray());
             var prs = string.Join(",", keyValues.Select(e => "@" + e.Key).ToArray());

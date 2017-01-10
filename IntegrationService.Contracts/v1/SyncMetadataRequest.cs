@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IntegrationService.Contracts.v1
+namespace IntegrationService.Contracts.v2
 {
     public class SyncMetadataRequest
     {

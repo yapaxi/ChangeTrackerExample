@@ -81,12 +81,15 @@
     <Compile Include="Configuration\ContextEntity.cs" />
     <Compile Include="Configuration\EntityConfig.cs" />
     <Compile Include="Configuration\DestinationConfig.cs" />
-    <Compile Include="Configuration\MappedContextEntity.cs" />
+    <Compile Include="Configuration\EntityRoot.cs" />
+    <Compile Include="Configuration\MappedEntityRoot.cs" />
+    <Compile Include="Configuration\ParentChildConfiguration.cs" />
     <Compile Include="Configuration\PrefixedDestinationConfig.cs" />
     <Compile Include="Configuration\RegisteredEntity.cs" />
     <Compile Include="DAL\Contexts\IEntityContext.cs" />
     <Compile Include="DAL\Contexts\SourceContext.cs" />
     <Compile Include="Domain\IEntity.cs" />
+    <Compile Include="Domain\Line.cs" />
     <Compile Include="Domain\SomeEntity.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

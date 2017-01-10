@@ -1,7 +1,8 @@
 ﻿using Autofac;
 using Common;
 using EasyNetQ;
-using IntegrationService.Contracts.v1;
+using IntegrationService.Contracts.v2;
+using IntegrationService.Host.DAL;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -40,9 +41,9 @@ namespace IntegrationService.Host.Metadata
                             this,
                             new ActivatedSchemaEventArgs(
                                 mapping.Name,
-                                JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema),
+                                new RuntimeMappingSchema(JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema)),
                                 mapping.QueueName,
-                                new DAL.StagingTable(mapping.StagingTableName))
+                                JsonConvert.DeserializeObject<StagingTable>(mapping.StagingTables))
                     );
                 }
             }
@@ -77,7 +78,7 @@ namespace IntegrationService.Host.Metadata
                                 this,
                                 new ActivatedSchemaEventArgs(
                                     details.Name,
-                                    details.Schema,
+                                    new RuntimeMappingSchema(details.Schema),
                                     details.QueueName,
                                     activatedSchema.StagingTable)
                             );

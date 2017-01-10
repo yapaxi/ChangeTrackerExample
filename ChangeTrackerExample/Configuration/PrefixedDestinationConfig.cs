@@ -9,24 +9,17 @@ namespace ChangeTrackerExample.Configuration
 {
     public class PrefixedDestinationConfig
     {
-        public bool ComplexObjectsAllowed { get; }
         public string Prefix { get; }
         public string RootNamespace { get; }
 
-        internal PrefixedDestinationConfig(string rootNamespace, string prefix, bool complexObjectsAllowed)
+        internal PrefixedDestinationConfig(string rootNamespace, string prefix)
         {
             EnsureNameIsValid(prefix);
-
-            this.ComplexObjectsAllowed = complexObjectsAllowed;
+            
             this.Prefix = prefix;
             this.RootNamespace = rootNamespace;
         }
-
-        public PrefixedDestinationConfig AllowComplexObjects()
-        {
-            return new PrefixedDestinationConfig(RootNamespace, Prefix, complexObjectsAllowed: true);
-        }
-
+        
         private static void EnsureNameIsValid(string exchangePrefix)
         {
             if (string.IsNullOrWhiteSpace(exchangePrefix))

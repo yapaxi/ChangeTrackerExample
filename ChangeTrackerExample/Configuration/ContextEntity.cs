@@ -2,6 +2,7 @@
 using ChangeTrackerExample.Domain;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -13,10 +14,21 @@ namespace ChangeTrackerExample.Configuration
         where TSourceContext : IEntityContext
         where TSource : class, IEntity
     {
-        internal MappedContextEntity<TSourceContext, TSource, TTarget> Map<TTarget>(string name, Expression<Func<TSource, TTarget>> mapper)
+        public Type Parent { get; }
+
+        internal ContextEntity()
+        {
+
+        }
+        internal ContextEntity(Type source)
+        {
+            Parent = source;
+        }
+
+        internal EntityRoot<TSourceContext, TSource, TTarget> SelectRoot<TTarget>(Expression<Func<TSource, TTarget>> mapper)
             where TTarget : class
         {
-            return new MappedContextEntity<TSourceContext, TSource, TTarget>(name, mapper);
+            return new EntityRoot<TSourceContext, TSource, TTarget>(mapper);
         }
     }
 }

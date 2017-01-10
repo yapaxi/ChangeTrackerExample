@@ -35,9 +35,12 @@ namespace ChangeTrackerExample.Configuration
 
         public void MapEntityToDestination(IBoundedMappedEntity entitySource, PrefixedDestinationConfig destination)
         {
-            if (!destination.ComplexObjectsAllowed && entitySource.MappingSchema.Properties.Any(e => e.Children.Any()))
+            foreach (var v in entitySource.MappingSchema.Properties.Where(e => e.Children.Any()))
             {
-                throw new Exception($"Complex objects are not allowed for destination {destination}");
+                if (!entitySource.Children.ContainsKey(v.ShortName))
+                {
+                    throw new Exception($"Complex objects \"{v.ShortName}\" on entity \"{entitySource.ShortName}\" is not configured (use \"WithChild\" method)");
+                }
             }
             
             _entities.Add(new EntityConfig(entitySource, destination));

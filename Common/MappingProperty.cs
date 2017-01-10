@@ -8,9 +8,15 @@ namespace Common
 {
     public class MappingProperty
     {
-        public string Name { get; set; }
+        public string ShortName { get; set; }
+        public string PathName { get; set; }
         public string ClrType { get; set; }
         public int? Size { get; set; }
-        public IReadOnlyCollection<MappingProperty> Children { get; set; }
+        public MappingProperty[] Children { get; set; }
+
+        public static string ConcatPathName(string parent, string name)
+        {
+            return string.IsNullOrWhiteSpace(parent) ? name : $"{parent}.{name}";
+        }
     }
 }

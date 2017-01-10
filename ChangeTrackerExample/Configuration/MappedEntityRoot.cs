@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace ChangeTrackerExample.Configuration
 {
-    public class MappedContextEntity<TSourceContext, TSource, TTarget> : IBoundedMappedEntity
+    public class MappedEntityRoot<TSourceContext, TSource, TTarget> : IBoundedMappedEntity
         where TSourceContext : IEntityContext
         where TSource : class, IEntity
         where TTarget : class
@@ -25,9 +25,14 @@ namespace ChangeTrackerExample.Configuration
 
         public Expression<Func<TSource, TTarget>> Mapper { get; }
 
+        public IReadOnlyDictionary<string, ParentChildConfiguration> Children { get; }
+
         public string ShortName { get; }
 
-        internal MappedContextEntity(string name, Expression<Func<TSource, TTarget>> mapper)
+        internal MappedEntityRoot(
+            string name,
+            Expression<Func<TSource, TTarget>> mapper,
+            IReadOnlyDictionary<string, ParentChildConfiguration> parentChildConfig)
         {
             _md5 = MD5.Create();
             Mapper = mapper;
@@ -36,6 +41,7 @@ namespace ChangeTrackerExample.Configuration
             var checksum = GetMD5(JsonConvert.SerializeObject(properties, Formatting.None));
             MappingSchema = new MappingSchema(properties, checksum, DateTime.UtcNow);
             ShortName = name;
+            Children = parentChildConfig;
         }
 
         public async Task<object> GetAndMapByIdAsync(IEntityContext context, int id)
@@ -67,7 +73,7 @@ namespace ChangeTrackerExample.Configuration
             return BitConverter.ToInt64(_md5.ComputeHash(array), 0);
         }
 
-        private MappingProperty[] GetProperties(Type t)
+        private MappingProperty[] GetProperties(Type t, string parentName = null)
         {
             var lst = new List<MappingProperty>();
 
@@ -84,7 +90,8 @@ namespace ChangeTrackerExample.Configuration
                 {
                     lst.Add(new MappingProperty()
                     {
-                        Name = p.Name,
+                        ShortName = p.Name,
+                        PathName = string.IsNullOrWhiteSpace(parentName) ? p.Name : MappingProperty.ConcatPathName(parentName, p.Name),
                         ClrType = typeName,
                         Size = attrs.OfType<MaxLengthAttribute>().FirstOrDefault()?.Length,
                         Children = new MappingProperty[0]
@@ -93,9 +100,32 @@ namespace ChangeTrackerExample.Configuration
                 else
                 {
                     var complex = new MappingProperty();
-                    complex.Name = p.Name;
-                    complex.ClrType = p.PropertyType.FullName;
-                    complex.Children = GetProperties(p.PropertyType);
+                    complex.ShortName = p.Name;
+                    complex.PathName = string.IsNullOrWhiteSpace(parentName) ? p.Name : MappingProperty.ConcatPathName(parentName, p.Name);
+                    if (p.PropertyType.IsGenericType)
+                    {
+                        var openGenericType = p.PropertyType.GetGenericTypeDefinition();
+                        if (openGenericType == typeof(ICollection<>) || openGenericType == typeof(IEnumerable<>))
+                        {
+                            var collectionElementType = p.PropertyType.GetGenericArguments()[0];
+                            complex.Children = GetProperties(collectionElementType, p.Name);
+                            lst.Add(complex);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException();
+                        }
+                    }
+                    else if (p.PropertyType.IsArray)
+                    {
+                        var arrayElementType = p.PropertyType.GetElementType();
+                        complex.Children = GetProperties(arrayElementType, p.Name);
+                        lst.Add(complex);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Ignoring {p.Name}");
+                    }
                 }
             }
 
@@ -140,7 +170,7 @@ namespace ChangeTrackerExample.Configuration
         Type ContextType { get; }
         Task<object> GetAndMapByIdAsync(IEntityContext context, int id);
         Task<IReadOnlyCollection<object>> GetAndMapByRangeAsync(IEntityContext context, int fromId, int toId);
-
+        IReadOnlyDictionary<string, ParentChildConfiguration> Children { get; }
         object GetAndMapById(IEntityContext context, int id);
         IReadOnlyCollection<object> GetAndMapByRange(IEntityContext context, int fromId, int toId);
     }

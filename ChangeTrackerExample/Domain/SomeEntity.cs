@@ -14,8 +14,10 @@ namespace ChangeTrackerExample.Domain
         public int Id { get; set; }
 
         [MaxLength(128)]
+        [Column(TypeName = "varchar")]
         public string ShortString { get; set; }
 
+        [Column(TypeName = "nvarchar")]
         public string MaxString { get; set; }
 
         public int Int32 { get; set; }
@@ -23,5 +25,9 @@ namespace ChangeTrackerExample.Domain
         public long Int64 { get; set; }
         
         public Guid? Guid { get; set; }
+
+        public ICollection<Line> Lines { get; set; }
+
+        public ICollection<SuperLine> SuperLines { get; set; }
     }
 }

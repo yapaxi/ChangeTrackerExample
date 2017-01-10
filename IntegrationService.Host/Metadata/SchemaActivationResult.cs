@@ -12,7 +12,7 @@ namespace IntegrationService.Host.Metadata
         public string Name { get; set; }
         public bool FullRebuildRequired { get; set; }
         public Exception Exception { get; set; }
-        public StagingTable StagingTable { get; set; }
+        public IStagingTable StagingTable { get; set; }
 
         public bool IsFailed => Exception != null;
     }

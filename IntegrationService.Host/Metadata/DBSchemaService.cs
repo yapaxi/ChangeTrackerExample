@@ -52,7 +52,7 @@ namespace IntegrationService.Host.Metadata
             return _repository.Mappings.Where(e => e.IsActive).ToArray();
         }
 
-        private StagingTable ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
+        private IStagingTable ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
         {
             var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
             var existing = mappings.FirstOrDefault(e => e.Checksum == schema.Checksum);
@@ -63,12 +63,12 @@ namespace IntegrationService.Host.Metadata
                 if (existing.IsActive)
                 {
                     Console.WriteLine("Already active, nothing to do");
-                    return new StagingTable(existing.StagingTableName);
+                    return JsonConvert.DeserializeObject<StagingTable>(existing.StagingTables);
                 }
                 else
                 {
                     Console.WriteLine("Reactivating");
-                    var stagingTable = CreateTable(name, schema.Properties);
+                    var stagingTable = CreateTables(name, schema.Properties);
 
                     DeactivateAll(mappings);
                     Activate(existing);
@@ -89,7 +89,7 @@ namespace IntegrationService.Host.Metadata
 
                 Console.WriteLine("Existing table not found");
 
-                var stagingTable = CreateTable(name, schema.Properties);
+                var stagingTable = CreateTables(name, schema.Properties);
 
                 DeactivateAll(mappings);
 
@@ -102,7 +102,7 @@ namespace IntegrationService.Host.Metadata
                     Name = name,
                     QueueName = queueName,
                     Schema = JsonConvert.SerializeObject(schema),
-                    StagingTableName = stagingTable.Name
+                    StagingTables = JsonConvert.SerializeObject(stagingTable)
                 });
 
                 _repository.SaveChanges();
@@ -110,14 +110,27 @@ namespace IntegrationService.Host.Metadata
             }
         }
 
-        private StagingTable CreateTable(string name, MappingProperty[] newSchema)
+        private StagingTable CreateTables(string name, MappingProperty[] newSchema)
         {
-            return _repository.CreateStagingTable(name, newSchema.Select(e => new TableColumnDefinition()
+            var simpleProperties = newSchema
+                .Where(e => !e.Children.Any())
+                .Select(e => new TableColumnDefinition()
+                {
+                    Name = e.ShortName,
+                    IsNullable = IsNullable(e.ClrType),
+                    SqlType = GetSqlTypeForClrType(e.ClrType, e.Size),
+                }).ToArray();
+
+            var table = _repository.CreateStagingTable(name, simpleProperties);
+
+            table.Children = new List<StagingTable>();
+
+            foreach (var v in newSchema.Where(e => e.Children.Any()))
             {
-                Name = e.Name,
-                IsNullable = IsNullable(e.ClrType),
-                SqlType = GetSqlTypeForClrType(e.ClrType, e.Size),
-            }).ToArray());
+                table.Children.Add(CreateTables(v.PathName, v.Children));
+            }
+
+            return table;
         }
 
         private string GetSqlTypeForClrType(string clrType, int? size)

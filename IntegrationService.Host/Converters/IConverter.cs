@@ -9,8 +9,8 @@ namespace IntegrationService.Host.Converters
 {
     interface IConverter
     {
-        MappingSchema Schema { get; }
+        RuntimeMappingSchema RuntimeSchema { get; }
 
-        KeyValuePair<string, object>[] Convert(byte[] data);
+        Dictionary<string, List<Dictionary<string, object>>> Convert(byte[] data);
     }
 }
