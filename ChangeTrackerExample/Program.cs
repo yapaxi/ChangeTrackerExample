@@ -48,7 +48,7 @@ namespace ChangeTrackerExample
             {
                 scope.Resolve<ISSynchronizer>().Start();
 
-                var rabcom = new RabbitCommunicationModelBuilder(scope.ResolveNamed<IBus>(Buses.Messaging).Advanced);
+                var rabcom = new RabbitCommunicationModelBuilder(scope.ResolveNamed<IBus>(Buses.SimpleMessaging).Advanced);
 
                 BuildTrackerLoopback(
                     scope.ResolveNamed<IBus>(Buses.Loopback).Advanced,
@@ -158,7 +158,7 @@ namespace ChangeTrackerExample
             containerBuilder.Register(e => new ChangeHandler(
                 config: e.Resolve<EntityGroupedConfig>(),
                 context: e.Resolve<SourceContext>(),
-                bus: e.ResolveNamed<IBus>(Buses.Messaging)
+                bus: e.ResolveNamed<IBus>(Buses.SimpleMessaging)
             )).InstancePerLifetimeScope();
 
             containerBuilder.Register(e => new LoopbackNotifier(

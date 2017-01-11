@@ -4,6 +4,7 @@ using EasyNetQ;
 using IntegrationService.Contracts.v2;
 using IntegrationService.Host.DAL;
 using Newtonsoft.Json;
+using RabbitModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;

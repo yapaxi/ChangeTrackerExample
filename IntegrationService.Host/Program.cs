@@ -26,10 +26,10 @@ namespace IntegrationService.Host
     {
         static void Main(string[] args)
         {
-            var rootScope = "root";
+            var rootScopeName = "root";
             var containerBuilder = new ContainerBuilder();
 
-            containerBuilder.RegisterModule(new RabbitAutofacModule(rootScope));
+            containerBuilder.RegisterModule(new RabbitAutofacModule(rootScopeName));
 
             containerBuilder.Register(e => new SchemaContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
             containerBuilder.Register(e => new DataContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
@@ -37,23 +37,30 @@ namespace IntegrationService.Host
             containerBuilder.RegisterType<DataRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
             containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<FlatMessage>>().SingleInstance();
+            containerBuilder.RegisterType<RowByRowWriter>();
 
             using (var container = containerBuilder.Build())
-            using (var scope = container.BeginLifetimeScope(rootScope))
-            using (var syncHost = new ISSynchronizerHost(scope))
-            using (var simpleListenerHost = new ListenerHost(scope.ResolveNamed<IBus>(Buses.SimpleMessaging)))
+            using (var rootScope = container.BeginLifetimeScope(rootScopeName))
+            using (var syncHost = new ISSynchronizerHost(rootScope))
+            using (var simpleListenerHost = new ListenerHost(rootScope.ResolveNamed<IBus>(Buses.SimpleMessaging)))
+            using (var bulkListenerHost = new ListenerHost(rootScope.ResolveNamed<IBus>(Buses.BulkMessaging)))
             {
                 syncHost.OnDeactivatedSchema += (s, e) => simpleListenerHost.Reject(e.EntityName);
+                syncHost.OnDeactivatedSchema += (s, e) => bulkListenerHost.Reject(e.EntityName);
+
                 syncHost.OnActivatedSchema += (s, e) => simpleListenerHost.Accept(e.EntityName, e.Queue, (rawMessage) =>
                 {
-                    using (var dataWriterScope = scope.BeginLifetimeScope())
+                    using (var dataWriterScope = rootScope.BeginLifetimeScope())
                     {
-                        var context = dataWriterScope.Resolve<DataRepository>();
                         var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), e.Schema);
+                        var destinationParam = new TypedParameter(typeof(WriteDestination), e.Destination);
+
                         var converter = dataWriterScope.Resolve<IConverter<FlatMessage>>(schemaParam);
-                        var writer = new RowByRowWriter(context, e.Destination);
+                        var writer = dataWriterScope.Resolve<RowByRowWriter>(destinationParam);
+
                         writer.Write(converter.Convert(rawMessage.Body).Payload);
-                        Console.WriteLine($"Written entity with id {rawMessage.EntityId}");
+
+                        Console.WriteLine($"\tWritten entity with id {rawMessage.EntityId}");
                     }
                 });
 
@@ -62,16 +69,6 @@ namespace IntegrationService.Host
 
                 Console.WriteLine("All Run");
                 Process.GetCurrentProcess().WaitForExit();
-            }
-        }
-
-        private static readonly object LOCK = new object();
-
-        private static void WriteMessageToConsole(byte[] body, MessageProperties p, MessageReceivedInfo args)
-        {
-            lock (LOCK)
-            {
-                Console.WriteLine($"Got message from {args.Exchange}: {p.Headers[ISMessageHeader.SCHEMA_ENTITY_ID]}");
             }
         }
     }

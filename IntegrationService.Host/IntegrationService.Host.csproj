@@ -80,7 +80,6 @@
     <Compile Include="Domain\Mapping.cs" />
     <Compile Include="Listeners\ListenerHost.cs" />
     <Compile Include="Converters\FlatMessageConverter.cs" />
-    <Compile Include="Buses.cs" />
     <Compile Include="Listeners\MessageReceivedEventArgs.cs" />
     <Compile Include="Listeners\RawMessage.cs" />
     <Compile Include="Metadata\ActivatedSchemaEventArgs.cs" />

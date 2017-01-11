@@ -30,8 +30,13 @@ namespace RabbitModel
                 .InstancePerMatchingLifetimeScope(_scope);
 
             builder
-                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost=/;username=test;password=test"))
-                .Named<IBus>(Buses.Messaging)
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost=SimpleMessaging;username=test;password=test"))
+                .Named<IBus>(Buses.SimpleMessaging)
+                .InstancePerMatchingLifetimeScope(_scope);
+
+            builder
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost=BulkMessaging;username=test;password=test"))
+                .Named<IBus>(Buses.BulkMessaging)
                 .InstancePerMatchingLifetimeScope(_scope);
 
             if (!string.IsNullOrWhiteSpace(_loopbackVHost))
