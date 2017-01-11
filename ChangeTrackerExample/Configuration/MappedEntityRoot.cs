@@ -80,6 +80,10 @@ namespace ChangeTrackerExample.Configuration
 
             foreach (var p in t.GetProperties())
             {
+                var fullPath = string.IsNullOrWhiteSpace(parentName) 
+                                    ? p.Name 
+                                    : MappingProperty.ConcatPathName(parentName, p.Name);
+
                 var attrs = p.GetCustomAttributes(false);
                 if (attrs.Any(e => e is JsonIgnoreAttribute || e is NotMappedAttribute))
                 {
@@ -92,7 +96,7 @@ namespace ChangeTrackerExample.Configuration
                     lst.Add(new MappingProperty()
                     {
                         ShortName = p.Name,
-                        PathName = string.IsNullOrWhiteSpace(parentName) ? p.Name : MappingProperty.ConcatPathName(parentName, p.Name),
+                        PathName = fullPath,
                         ClrType = typeName,
                         Size = attrs.OfType<MaxLengthAttribute>().FirstOrDefault()?.Length,
                         Children = new MappingProperty[0]
@@ -102,19 +106,19 @@ namespace ChangeTrackerExample.Configuration
                 {
                     var complex = new MappingProperty();
                     complex.ShortName = p.Name;
-                    complex.PathName = string.IsNullOrWhiteSpace(parentName) ? p.Name : MappingProperty.ConcatPathName(parentName, p.Name);
+                    complex.PathName = fullPath;
                     if (p.PropertyType.IsGenericType)
                     {
                         var openGenericType = p.PropertyType.GetGenericTypeDefinition();
                         if (openGenericType == typeof(ICollection<>) || openGenericType == typeof(IEnumerable<>))
                         {
                             var collectionElementType = p.PropertyType.GetGenericArguments()[0];
-                            complex.Children = GetProperties(collectionElementType, p.Name);
+                            complex.Children = GetProperties(collectionElementType, fullPath);
                             lst.Add(complex);
                         }
                         else if (p.PropertyType.GetCustomAttributes(false).OfType<CompilerGeneratedAttribute>().Any())
                         {
-                            complex.Children = GetProperties(p.PropertyType, p.Name);
+                            complex.Children = GetProperties(p.PropertyType, fullPath);
                             lst.Add(complex);
                         }
                         else

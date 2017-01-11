@@ -1,4 +1,5 @@
-﻿using ChangeTrackerExample.DAL.Contexts;
+﻿using ChangeTrackerExample.Configuration.Expressions;
+using ChangeTrackerExample.DAL.Contexts;
 using ChangeTrackerExample.Domain;
 using System;
 using System.Collections.Generic;
@@ -70,35 +71,16 @@ namespace ChangeTrackerExample.Configuration
 
         private EntityRoot<TSourceContext, TSource, TTarget> WithChildInternal(LambdaExpression selector, LambdaExpression foreignKeySelector)
         {
-            var childName = GetPropertyName(selector);
-            var foreignKeyPropertyName = GetPropertyName(foreignKeySelector);
+            var path = ExpressionPathBuilder.GetPropertyOnlyPathExceptRoot(selector);
+            var foreignKeyPropertyName = ExpressionPathBuilder.GetPropertyName(foreignKeySelector);
 
             var concat = ChildMappings
                 .Concat(new[] {
-                    new KeyValuePair<string, ParentChildConfiguration>(childName, new ParentChildConfiguration(foreignKeyPropertyName))
+                    new KeyValuePair<string, ParentChildConfiguration>(path, new ParentChildConfiguration(foreignKeyPropertyName))
                 })
                 .ToDictionary(e => e.Key, e => e.Value);
 
             return new EntityRoot<TSourceContext, TSource, TTarget>(Mapper, concat);
-        }
-
-        private static string GetPropertyName(LambdaExpression selector)
-        {
-            var memberExpression = selector.Body as MemberExpression;
-
-            if (memberExpression == null)
-            {
-                throw new InvalidOperationException("Invalid labmda expression: expected property selector");
-            }
-
-            var property = memberExpression.Member as PropertyInfo;
-
-            if (property == null)
-            {
-                throw new InvalidOperationException("Invalid labmda expression member: expected property");
-            }
-
-            return property.Name;
         }
     }
 }

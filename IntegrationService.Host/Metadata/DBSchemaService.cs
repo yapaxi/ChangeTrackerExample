@@ -161,6 +161,11 @@ namespace IntegrationService.Host.Metadata
                 return "bit";
             }
 
+            if (type == typeof(double))
+            {
+                return "float";
+            }
+
             throw new InvalidOperationException($"Unexpected type: {clrType} -> {type}");
         }
 

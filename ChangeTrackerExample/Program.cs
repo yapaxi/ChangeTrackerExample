@@ -179,14 +179,24 @@ namespace ChangeTrackerExample
             {
                 Id = e.Id,
                 e.Guid,
-                Z = e.Int32*1235,
+                Z = e.Int32 * 1235,
                 Lines = e.Lines,
                 Object = new
                 {
                     Id = e.Id,
                     EntityId = e.Id,
                     X = 1,
-                    GGGHH = 34343
+                    GGGHH = 34343,
+                    InnerObject = new
+                    {
+                        Id = e.Id,
+                        Value = 100 * e.Lines.Average(q => q.EntityId),
+                        NestedObject = new
+                        {
+                           Id = e.Id,
+                           asdjahsdkas = 5556565
+                        }
+                    }
                 },
                 SuperLines = e.SuperLines.Select(z => new
                 {
@@ -194,11 +204,19 @@ namespace ChangeTrackerExample
                     CoolForeignKey = z.EntityId,
                     MegaString = z.SuperString,
                     hhh = 3453454,
+                    SuperInnerObject = new
+                    {
+                        Id = z.Id,
+                        Value = 5 * e.SuperLines.Min(q => q.EntityId)
+                    }
                 })
             })
             .WithChild(e => e.Lines, e => e.EntityId)
             .WithChild(e => e.Object, e => e.EntityId)
-            .WithChild(e => e.SuperLines, e => e.CoolForeignKey);
+            .WithChild(e => e.Object.InnerObject, e => e.Id)
+            .WithChild(e => e.SuperLines, e => e.CoolForeignKey)
+            .WithChild(e => e.Object.InnerObject.NestedObject, e => e.Id)
+            .WithChild(e => e.SuperLines.Config().SuperInnerObject, e => e.Id);
 
             var mappedEntity = root.Named("some-entity");
             

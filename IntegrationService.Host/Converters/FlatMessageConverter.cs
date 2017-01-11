@@ -52,8 +52,7 @@ namespace IntegrationService.Host.Converters
                             MappingProperty mapping;
                             if (!RuntimeSchema.FlatProperties.TryGetValue(path, out mapping))
                             {
-                                Console.WriteLine($"[{_runtimeId}] Unexpected property: {path}. Convertion is aborted.");
-                                return null;
+                                throw new Exception($"[{_runtimeId}] Unexpected property: {path}. Convertion is aborted.");
                             }
                             lineStack.Peek().Add(currentProperty, System.Convert.ChangeType(r.Value, _typeCache[mapping.ClrType]));
                             break;
@@ -75,8 +74,7 @@ namespace IntegrationService.Host.Converters
                         case JsonToken.Null:
                             break;
                         default:
-                            Console.WriteLine($"[{_runtimeId}] Unexpected token: {r.TokenType}. Convertion is aborted.");
-                            return null;
+                            throw new Exception($"[{_runtimeId}] Unexpected token: {r.TokenType}. Convertion is aborted.");
                     }
                 }
             }

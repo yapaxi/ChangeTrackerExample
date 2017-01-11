@@ -35,15 +35,21 @@ namespace ChangeTrackerExample.Configuration
 
         public void MapEntityToDestination(IBoundedMappedEntity entitySource, PrefixedDestinationConfig destination)
         {
-            foreach (var v in entitySource.MappingSchema.Properties.Where(e => e.Children.Any()))
+            RecursiveEnsureForeignKeysExists(entitySource.MappingSchema.Properties, entitySource);
+            _entities.Add(new EntityConfig(entitySource, destination));
+        }
+
+        private static void RecursiveEnsureForeignKeysExists(MappingProperty[] properties, IBoundedMappedEntity entitySource)
+        {
+            foreach (var v in properties.Where(e => e.Children.Any()))
             {
-                if (!entitySource.Children.ContainsKey(v.ShortName))
+                if (!entitySource.Children.ContainsKey(v.PathName))
                 {
                     throw new Exception($"Complex objects \"{v.ShortName}\" on entity \"{entitySource.ShortName}\" is not configured (use \"WithChild\" method)");
                 }
+
+                RecursiveEnsureForeignKeysExists(v.Children, entitySource);
             }
-            
-            _entities.Add(new EntityConfig(entitySource, destination));
         }
 
         public void Build()

@@ -112,7 +112,7 @@ namespace IntegrationService.Host.Metadata
             }
             else
             {
-                throw new NotImplementedException(e.Exception.Message);
+                throw e.Exception;
             }
 
             return new SyncMetadataResponseItem()
