@@ -22,6 +22,8 @@ namespace IntegrationService.Host.DAL
             : base(context)
         {
         }
+        
+        public T Add<T>(T entity) where T : class => Context.Set<T>().Add(entity);
 
         public IQueryable<Mapping> Mappings => Context.Mappings;
 

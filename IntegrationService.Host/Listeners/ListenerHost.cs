@@ -80,21 +80,18 @@ namespace IntegrationService.Host.Listeners
                 
                 var subscription = _simpleBus.Advanced.Consume(
                     new Queue(queue, false),
-                    (data, properties, info) => 
-                    {
-                        var message = new RawMessage()
-                        {
-                            Body = data,
-                            EntityId = (int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID]
-                        };
-
-                        using (var scope = _scope.BeginLifetimeScope())
-                        {
-                            callback(scope, message);
-                        }
-                    }
+                    (data, properties, info) => HandleIncomingSimpleMessage(callback, data, properties)
                 );
                 _subscriptions.Add(entityName, subscription);
+            }
+        }
+
+        private void HandleIncomingSimpleMessage(Action<ILifetimeScope, RawMessage> callback, byte[] data, MessageProperties properties)
+        {
+            var message = new RawMessage((int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID], data);
+            using (var scope = _scope.BeginLifetimeScope())
+            {
+                callback(scope, message);
             }
         }
 

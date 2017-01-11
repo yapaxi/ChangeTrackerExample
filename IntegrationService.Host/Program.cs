@@ -42,11 +42,11 @@ namespace IntegrationService.Host
             using (var container = containerBuilder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
             using (var syncHost = new ISSynchronizerHost(rootScope))
-            using (var simpleListenerHost = new ListenerHost(rootScope))
+            using (var listenerHost = new ListenerHost(rootScope))
             {
-                syncHost.OnDeactivatedSchema += (s, e) => simpleListenerHost.Reject(e.EntityName);
+                syncHost.OnDeactivatedSchema += (s, e) => listenerHost.Reject(e.EntityName);
 
-                syncHost.OnActivatedSchema += (s, e) => simpleListenerHost.Accept(e.EntityName, e.Queue, (scope, rawMessage) =>
+                syncHost.OnActivatedSchema += (s, e) => listenerHost.Accept(e.EntityName, e.Queue, (scope, rawMessage) =>
                 {
                     var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), e.Schema);
                     var destinationParam = new TypedParameter(typeof(WriteDestination), e.Destination);

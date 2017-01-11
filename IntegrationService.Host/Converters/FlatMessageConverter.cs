@@ -13,7 +13,6 @@ namespace IntegrationService.Host.Converters
 {
     public class FlatMessageConverter : IConverter<FlatMessage>
     {
-        private readonly Guid _runtimeId = Guid.NewGuid();
         public RuntimeMappingSchema RuntimeSchema { get; }
 
         public FlatMessageConverter(RuntimeMappingSchema runtimeSchema)
@@ -49,7 +48,7 @@ namespace IntegrationService.Host.Converters
                             MappingProperty mapping;
                             if (!RuntimeSchema.FlatProperties.TryGetValue(path, out mapping))
                             {
-                                throw new Exception($"[{_runtimeId}] Unexpected property: {path}. Convertion is aborted.");
+                                throw new Exception($"[{nameof(FlatMessageConverter)}] Unexpected property: {path}. Convertion is aborted.");
                             }
                             lineStack.Peek().Add(currentProperty, System.Convert.ChangeType(r.Value, RuntimeSchema.TypeCache[mapping.ClrType]));
                             break;
@@ -71,7 +70,7 @@ namespace IntegrationService.Host.Converters
                         case JsonToken.Null:
                             break;
                         default:
-                            throw new Exception($"[{_runtimeId}] Unexpected token: {r.TokenType}. Convertion is aborted.");
+                            throw new Exception($"[{nameof(FlatMessageConverter)}] Unexpected token: {r.TokenType}. Convertion is aborted.");
                     }
                 }
             }

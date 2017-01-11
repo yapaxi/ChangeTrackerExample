@@ -8,7 +8,13 @@ namespace IntegrationService.Host.Listeners
 {
     public class RawMessage
     {
-        public int EntityId { get; set; }
-        public byte[] Body { get; set; }
+        public RawMessage(int entityId, byte[] body)
+        {
+            EntityId = entityId;
+            Body = body;
+        }
+
+        public int EntityId { get; }
+        public byte[] Body { get; }
     }
 }

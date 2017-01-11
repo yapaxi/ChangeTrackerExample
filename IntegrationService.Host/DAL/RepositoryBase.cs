@@ -18,8 +18,6 @@ namespace IntegrationService.Host.DAL
             Context = context;
         }
 
-        public T Add<T>(T entity) where T : class => Context.Set<T>().Add(entity);
-
         public DbContextTransaction BeginTransaction()
         {
             return Context.Database.BeginTransaction();
