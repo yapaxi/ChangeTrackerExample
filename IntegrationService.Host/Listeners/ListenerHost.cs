@@ -17,17 +17,21 @@ namespace IntegrationService.Host.Listeners
 {
     public partial class ListenerHost : IDisposable
     {
-        private readonly IBus _bus;
+        private readonly ILifetimeScope _scope;
+        private readonly IBus _simpleBus;
+        private readonly IBus _bulkBus;
         private readonly Dictionary<string, IDisposable> _subscriptions;
         private readonly object _lock;
 
         private bool _disposed;
 
-        public ListenerHost(IBus bus)
+        public ListenerHost(ILifetimeScope scope)
         {
+            _scope = scope;
             _lock = new object();
             _subscriptions = new Dictionary<string, IDisposable>();
-            _bus = bus;
+            _simpleBus = scope.ResolveNamed<IBus>(Buses.SimpleMessaging);
+            _bulkBus = scope.ResolveNamed<IBus>(Buses.BulkMessaging);
         }
 
         public void Reject(string entityName)
@@ -53,7 +57,7 @@ namespace IntegrationService.Host.Listeners
             }
         }
 
-        public void Accept(string entityName, string queue, Action<RawMessage> callback)
+        public void Accept(string entityName, string queue, Action<ILifetimeScope, RawMessage> callback)
         {
             if (_disposed)
             {
@@ -74,13 +78,21 @@ namespace IntegrationService.Host.Listeners
 
                 Console.WriteLine($"Creating new subscription for {entityName}");
                 
-                var subscription = _bus.Advanced.Consume(
+                var subscription = _simpleBus.Advanced.Consume(
                     new Queue(queue, false),
-                    (data, properties, info) => callback(new RawMessage()
+                    (data, properties, info) => 
                     {
-                        Body = data,
-                        EntityId = (int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID]
-                    })
+                        var message = new RawMessage()
+                        {
+                            Body = data,
+                            EntityId = (int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID]
+                        };
+
+                        using (var scope = _scope.BeginLifetimeScope())
+                        {
+                            callback(scope, message);
+                        }
+                    }
                 );
                 _subscriptions.Add(entityName, subscription);
             }

@@ -42,26 +42,21 @@ namespace IntegrationService.Host
             using (var container = containerBuilder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
             using (var syncHost = new ISSynchronizerHost(rootScope))
-            using (var simpleListenerHost = new ListenerHost(rootScope.ResolveNamed<IBus>(Buses.SimpleMessaging)))
-            using (var bulkListenerHost = new ListenerHost(rootScope.ResolveNamed<IBus>(Buses.BulkMessaging)))
+            using (var simpleListenerHost = new ListenerHost(rootScope))
             {
                 syncHost.OnDeactivatedSchema += (s, e) => simpleListenerHost.Reject(e.EntityName);
-                syncHost.OnDeactivatedSchema += (s, e) => bulkListenerHost.Reject(e.EntityName);
 
-                syncHost.OnActivatedSchema += (s, e) => simpleListenerHost.Accept(e.EntityName, e.Queue, (rawMessage) =>
+                syncHost.OnActivatedSchema += (s, e) => simpleListenerHost.Accept(e.EntityName, e.Queue, (scope, rawMessage) =>
                 {
-                    using (var dataWriterScope = rootScope.BeginLifetimeScope())
-                    {
-                        var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), e.Schema);
-                        var destinationParam = new TypedParameter(typeof(WriteDestination), e.Destination);
+                    var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), e.Schema);
+                    var destinationParam = new TypedParameter(typeof(WriteDestination), e.Destination);
 
-                        var converter = dataWriterScope.Resolve<IConverter<FlatMessage>>(schemaParam);
-                        var writer = dataWriterScope.Resolve<RowByRowWriter>(destinationParam);
+                    var converter = scope.Resolve<IConverter<FlatMessage>>(schemaParam);
+                    var writer = scope.Resolve<RowByRowWriter>(destinationParam);
 
-                        writer.Write(converter.Convert(rawMessage.Body).Payload);
+                    writer.Write(converter.Convert(rawMessage.Body).Payload);
 
-                        Console.WriteLine($"\tWritten entity with id {rawMessage.EntityId}");
-                    }
+                    Console.WriteLine($"\tWritten entity with id {rawMessage.EntityId}");
                 });
 
                 syncHost.RecoverKnownSchemas();
