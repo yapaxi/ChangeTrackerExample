@@ -6,18 +6,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IntegrationService.Host.Metadata
+namespace IntegrationService.Host.Listeners.Metadata
 {
     public class ActivatedSchemaEventArgs : SchemaEventArgs
     {
-        public ActivatedSchemaEventArgs(string entityName, RuntimeMappingSchema schema, string queue, WriteDestination destination)
+        public ActivatedSchemaEventArgs(string queue, string entityName, RuntimeMappingSchema schema, WriteDestination destination)
             : base(entityName)
         {
             Schema = schema;
             Queue = queue;
             Destination = destination;
         }
-
         public RuntimeMappingSchema Schema { get; }
         public string Queue { get; }
         public WriteDestination Destination { get; }

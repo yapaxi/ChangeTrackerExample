@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IntegrationService.Host.Listeners
+namespace IntegrationService.Host.Listeners.Data
 {
     public class RawMessage
     {

@@ -78,18 +78,24 @@
     <Compile Include="DAL\SchemaRepository.cs" />
     <Compile Include="DAL\WriteDestination.cs" />
     <Compile Include="Domain\Mapping.cs" />
-    <Compile Include="Listeners\ListenerHost.cs" />
+    <Compile Include="Listeners\Data\DataListenerHost.cs" />
     <Compile Include="Converters\FlatMessageConverter.cs" />
-    <Compile Include="Listeners\MessageReceivedEventArgs.cs" />
-    <Compile Include="Listeners\RawMessage.cs" />
-    <Compile Include="Metadata\ActivatedSchemaEventArgs.cs" />
-    <Compile Include="Metadata\ISSynchronizerHost.cs" />
+    <Compile Include="Listeners\Data\MessageReceivedEventArgs.cs" />
+    <Compile Include="Listeners\Data\RawMessage.cs" />
+    <Compile Include="Listeners\Data\Subscriptions\BulkSubscription.cs" />
+    <Compile Include="Listeners\Data\Subscriptions\StreamingSubscription.cs" />
+    <Compile Include="Listeners\ListenerBase.cs" />
+    <Compile Include="Listeners\Metadata\ActivatedSchemaEventArgs.cs" />
+    <Compile Include="Listeners\Metadata\DataMode.cs" />
+    <Compile Include="Listeners\Metadata\MetadataListenerHost.cs" />
     <Compile Include="Metadata\DBSchemaService.cs" />
     <Compile Include="DAL\StagingTable.cs" />
     <Compile Include="Metadata\SchemaActivationResult.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DAL\Contexts\SchemaContext.cs" />
+    <Compile Include="Writers\IWriter.cs" />
+    <Compile Include="Writers\BulkWriter.cs" />
     <Compile Include="Writers\RowByRowWriter.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -19,6 +19,8 @@ using IntegrationService.Host.Converters;
 using IntegrationService.Host.Writers;
 using Autofac.Core;
 using Common;
+using IntegrationService.Host.Listeners.Metadata;
+using IntegrationService.Host.Listeners.Data;
 
 namespace IntegrationService.Host
 {
@@ -36,34 +38,57 @@ namespace IntegrationService.Host
             containerBuilder.RegisterType<SchemaRepository>();
             containerBuilder.RegisterType<DataRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
-            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<FlatMessage>>().SingleInstance();
+            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<RawMessage, FlatMessage>>().SingleInstance();
+            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>>().SingleInstance();
             containerBuilder.RegisterType<RowByRowWriter>();
 
             using (var container = containerBuilder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
-            using (var syncHost = new ISSynchronizerHost(rootScope))
-            using (var listenerHost = new ListenerHost(rootScope))
+            using (var metadataListenerHost = new MetadataListenerHost(rootScope))
+            using (var dataListenerHost = new DataListenerHost(rootScope))
             {
-                syncHost.OnDeactivatedSchema += (s, e) => listenerHost.Reject(e.EntityName);
+                metadataListenerHost.OnDeactivatedSchema += (s, e) => dataListenerHost.UnbindAll(e.EntityName);
 
-                syncHost.OnActivatedSchema += (s, e) => listenerHost.Accept(e.EntityName, e.Queue, (scope, rawMessage) =>
-                {
-                    var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), e.Schema);
-                    var destinationParam = new TypedParameter(typeof(WriteDestination), e.Destination);
+                metadataListenerHost.OnBulkActivatedSchema += (s, e) => dataListenerHost.BindBulk
+                (
+                    e.EntityName,
+                    e.Queue,
+                    (scope, rawMessages) => new WriteDispatcher<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>(scope, e.Schema, e.Destination).Write(rawMessages)
+                );
 
-                    var converter = scope.Resolve<IConverter<FlatMessage>>(schemaParam);
-                    var writer = scope.Resolve<RowByRowWriter>(destinationParam);
+                metadataListenerHost.OnRowByRowActivatedSchema += (s, e) => dataListenerHost.BindRowByRow
+                (
+                    e.EntityName,
+                    e.Queue, 
+                    (scope, rawMessage) => new WriteDispatcher<RawMessage, FlatMessage>(scope, e.Schema, e.Destination).Write(rawMessage)
+                );
 
-                    writer.Write(converter.Convert(rawMessage.Body).Payload);
-
-                    Console.WriteLine($"\tWritten entity with id {rawMessage.EntityId}");
-                });
-
-                syncHost.RecoverKnownSchemas();
-                syncHost.StartAcceptingExternalSchemas();
+                metadataListenerHost.RecoverKnownSchemas();
+                metadataListenerHost.StartAcceptingExternalSchemas();
 
                 Console.WriteLine("All Run");
                 Process.GetCurrentProcess().WaitForExit();
+            }
+        }
+
+#warning REWRITE
+
+        private class WriteDispatcher<TSource, TResult>
+        {
+            private readonly IConverter<TSource, TResult> _converter;
+            private readonly IWriter<TResult> _writer;
+
+            public WriteDispatcher(ILifetimeScope scope, RuntimeMappingSchema schema, WriteDestination destination)
+            {
+                var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), schema);
+                var destinationParam = new TypedParameter(typeof(WriteDestination), destination);
+                _converter = scope.Resolve<IConverter<TSource, TResult>>(schemaParam);
+                _writer = scope.Resolve<IWriter<TResult>>(destinationParam);
+            }
+
+            public void Write(TSource rawMessage)
+            {
+                _writer.Write(_converter.Convert(rawMessage));
             }
         }
     }

@@ -8,10 +8,13 @@ using RabbitModel;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.IO;
+using IntegrationService.Host.Listeners.Data;
 
 namespace IntegrationService.Host.Converters
 {
-    public class FlatMessageConverter : IConverter<FlatMessage>
+    public class FlatMessageConverter : 
+        IConverter<RawMessage, FlatMessage>,
+        IConverter<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>
     {
         public RuntimeMappingSchema RuntimeSchema { get; }
 
@@ -19,12 +22,20 @@ namespace IntegrationService.Host.Converters
         {
             RuntimeSchema = runtimeSchema;
         }
+        
+        public IEnumerable<FlatMessage> Convert(IEnumerable<RawMessage> data)
+        {
+            foreach (var v in data)
+            {
+                yield return Convert(v);
+            }
+        }
 
-        public FlatMessage Convert(byte[] data)
+        public FlatMessage Convert(RawMessage data)
         {
             var properties = RuntimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>());
 
-            using (var r = new JsonTextReader(new StringReader(Encoding.Unicode.GetString(data))))
+            using (var r = new JsonTextReader(new StringReader(Encoding.Unicode.GetString(data.Body))))
             {
                 string currentProperty = null;
                 var pathStack = new Stack<string>();
