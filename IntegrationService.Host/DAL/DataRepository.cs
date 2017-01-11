@@ -9,20 +9,21 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.DAL
 {
-    public class DataRepository
+    public class DataRepository : RepositoryBase<DataContext>
     {
-        private readonly DataContext _dataContext;
 
         public DataRepository(DataContext dataContext)
+            : base(dataContext)
         {
-            _dataContext = dataContext;
+
         }
 
-        public void Insert(string tableName, IReadOnlyDictionary<string, object> keyValues)
+        public void Merge(string tableName, IReadOnlyDictionary<string, object> keyValues)
         {
             var columns = string.Join(",", keyValues.Select(e => e.Key).ToArray());
             var prs = string.Join(",", keyValues.Select(e => "@" + e.Key).ToArray());
-            _dataContext.Database.ExecuteSqlCommand(
+
+            Context.Database.ExecuteSqlCommand(
                 $"insert into {tableName} ({columns}) values ({prs})",
                 keyValues.Select(e => new SqlParameter(e.Key, e.Value)).ToArray());
         }

@@ -10,17 +10,17 @@ namespace IntegrationService.Host.Metadata
 {
     public class ActivatedSchemaEventArgs : SchemaEventArgs
     {
-        public ActivatedSchemaEventArgs(string entityName, RuntimeMappingSchema schema, string queue, IStagingTable stagingTable)
+        public ActivatedSchemaEventArgs(string entityName, RuntimeMappingSchema schema, string queue, WriteDestination destination)
             : base(entityName)
         {
             Schema = schema;
             Queue = queue;
-            StagingTable = stagingTable;
+            Destination = destination;
         }
 
         public RuntimeMappingSchema Schema { get; }
         public string Queue { get; }
-        public IStagingTable StagingTable { get; }
+        public WriteDestination Destination { get; }
     }
 
 

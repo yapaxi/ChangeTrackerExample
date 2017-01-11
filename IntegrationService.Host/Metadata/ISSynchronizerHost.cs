@@ -43,7 +43,7 @@ namespace IntegrationService.Host.Metadata
                                 mapping.Name,
                                 new RuntimeMappingSchema(JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema)),
                                 mapping.QueueName,
-                                JsonConvert.DeserializeObject<StagingTable>(mapping.StagingTables))
+                                new WriteDestination(JsonConvert.DeserializeObject<StagingTable>(mapping.StagingTables)))
                     );
                 }
             }
@@ -80,7 +80,7 @@ namespace IntegrationService.Host.Metadata
                                     details.Name,
                                     new RuntimeMappingSchema(details.Schema),
                                     details.QueueName,
-                                    activatedSchema.StagingTable)
+                                    new WriteDestination(activatedSchema.StagingTable))
                             );
                         }
                         else

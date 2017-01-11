@@ -8,23 +8,20 @@ using RabbitModel;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.IO;
-using ResolvedMapping = System.Tuple<Common.MappingProperty, System.Type>;
 
 namespace IntegrationService.Host.Converters
 {
-    public class FlatMessageConverter : IConverter
+    public class FlatMessageConverter : IConverter<FlatMessage>
     {
-        private readonly Dictionary<string, Type> _typeCache;
         private readonly Guid _runtimeId = Guid.NewGuid();
         public RuntimeMappingSchema RuntimeSchema { get; }
 
         public FlatMessageConverter(RuntimeMappingSchema runtimeSchema)
         {
             RuntimeSchema = runtimeSchema;
-            _typeCache = RuntimeSchema.FlatProperties.Select(e => e.Value.ClrType).Where(e => e != null).Distinct().ToDictionary(e => e, e => Type.GetType(e));
         }
 
-        public Dictionary<string, List<Dictionary<string, object>>> Convert(byte[] data)
+        public FlatMessage Convert(byte[] data)
         {
             var properties = RuntimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>());
 
@@ -54,7 +51,7 @@ namespace IntegrationService.Host.Converters
                             {
                                 throw new Exception($"[{_runtimeId}] Unexpected property: {path}. Convertion is aborted.");
                             }
-                            lineStack.Peek().Add(currentProperty, System.Convert.ChangeType(r.Value, _typeCache[mapping.ClrType]));
+                            lineStack.Peek().Add(currentProperty, System.Convert.ChangeType(r.Value, RuntimeSchema.TypeCache[mapping.ClrType]));
                             break;
                         case JsonToken.PropertyName:
                             currentProperty = (string)r.Value;
@@ -79,7 +76,7 @@ namespace IntegrationService.Host.Converters
                 }
             }
 
-            return properties;
+            return new FlatMessage(properties);
         }
 
         private static string RemoveArrayElement(string path)

@@ -16,13 +16,13 @@ namespace Common
             FindObjects(MappingSchema.RootName, this.Schema.Properties, buffer);
             Objects = buffer;
             FlatProperties = ConverToFlatProperties(buffer);
+            TypeCache = FlatProperties.Select(e => e.Value.ClrType).Where(e => e != null).Distinct().ToDictionary(e => e, e => Type.GetType(e));
         }
 
-        public MappingSchema Schema { get; set; }
-
-        public IReadOnlyDictionary<string, MappingProperty[]> Objects { get; set; }
-
-        public IReadOnlyDictionary<string, MappingProperty> FlatProperties { get; set; }
+        public IReadOnlyDictionary<string, Type> TypeCache { get; }
+        public MappingSchema Schema { get; }
+        public IReadOnlyDictionary<string, MappingProperty[]> Objects { get; }
+        public IReadOnlyDictionary<string, MappingProperty> FlatProperties { get;}
 
         private static void FindObjects(string name, MappingProperty[] properties, Dictionary<string, MappingProperty[]> buffer)
         {

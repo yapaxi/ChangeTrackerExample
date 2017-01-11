@@ -15,6 +15,10 @@ using IntegrationService.Host.DAL;
 using IntegrationService.Host.DAL.Contexts;
 using IntegrationService.Host.Metadata;
 using IntegrationService.Host.Listeners;
+using IntegrationService.Host.Converters;
+using IntegrationService.Host.Writers;
+using Autofac.Core;
+using Common;
 
 namespace IntegrationService.Host
 {
@@ -32,14 +36,26 @@ namespace IntegrationService.Host
             containerBuilder.RegisterType<SchemaRepository>();
             containerBuilder.RegisterType<DataRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
+            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<FlatMessage>>().SingleInstance();
 
             using (var container = containerBuilder.Build())
             using (var scope = container.BeginLifetimeScope(rootScope))
             using (var syncHost = new ISSynchronizerHost(scope))
-            using (var listenHost = new ListenerHost(scope))
+            using (var simpleListenerHost = new ListenerHost(scope.ResolveNamed<IBus>(Buses.SimpleMessaging)))
             {
-                syncHost.OnDeactivatedSchema += (s, e) => listenHost.Reject(e.EntityName);
-                syncHost.OnActivatedSchema += (s, e) => listenHost.Accept(e.EntityName, e.Queue, e.Schema, e.StagingTable);
+                syncHost.OnDeactivatedSchema += (s, e) => simpleListenerHost.Reject(e.EntityName);
+                syncHost.OnActivatedSchema += (s, e) => simpleListenerHost.Accept(e.EntityName, e.Queue, (rawMessage) =>
+                {
+                    using (var dataWriterScope = scope.BeginLifetimeScope())
+                    {
+                        var context = dataWriterScope.Resolve<DataRepository>();
+                        var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), e.Schema);
+                        var converter = dataWriterScope.Resolve<IConverter<FlatMessage>>(schemaParam);
+                        var writer = new RowByRowWriter(context, e.Destination);
+                        writer.Write(converter.Convert(rawMessage.Body).Payload);
+                        Console.WriteLine($"Written entity with id {rawMessage.EntityId}");
+                    }
+                });
 
                 syncHost.RecoverKnownSchemas();
                 syncHost.StartAcceptingExternalSchemas();

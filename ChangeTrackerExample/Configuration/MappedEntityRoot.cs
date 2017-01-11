@@ -47,24 +47,24 @@ namespace ChangeTrackerExample.Configuration
 
         public async Task<object> GetAndMapByIdAsync(IEntityContext context, int id)
         {
-            var o = await context.Get<TSource>().Where(e => e.Id == id).Select(Mapper).FirstOrDefaultAsync();
+            var o = await context.ReadonlyGet<TSource>().Where(e => e.Id == id).Select(Mapper).FirstOrDefaultAsync();
             return o;
         }
 
         public async Task<IReadOnlyCollection<object>> GetAndMapByRangeAsync(IEntityContext context, int fromId, int toId)
         {
-            var o = await context.Get<TSource>().Where(e => e.Id >= fromId && e.Id <= toId).Select(Mapper).ToListAsync();
+            var o = await context.ReadonlyGet<TSource>().Where(e => e.Id >= fromId && e.Id <= toId).Select(Mapper).ToListAsync();
             return o;
         }
         
         public object GetAndMapById(IEntityContext context, int id)
         {
-            return context.Get<TSource>().Where(e => e.Id == id).Select(Mapper).FirstOrDefault();
+            return context.ReadonlyGet<TSource>().Where(e => e.Id == id).Select(Mapper).FirstOrDefault();
         }
 
         public IReadOnlyCollection<object> GetAndMapByRange(IEntityContext context, int fromId, int toId)
         {
-            return context.Get<TSource>().Where(e => e.Id >= fromId && e.Id <= toId).Select(Mapper).ToList();
+            return context.ReadonlyGet<TSource>().Where(e => e.Id >= fromId && e.Id <= toId).Select(Mapper).ToList();
         }
 
         private long GetMD5(string str)
@@ -91,7 +91,7 @@ namespace ChangeTrackerExample.Configuration
                 }
 
                 string typeName;
-                if (IsNativeType(p.PropertyType, out typeName))
+                if (IsSimpleType(p.PropertyType, out typeName))
                 {
                     lst.Add(new MappingProperty()
                     {
@@ -142,7 +142,7 @@ namespace ChangeTrackerExample.Configuration
             return lst.ToArray();
         }
 
-        private static bool IsNativeType(Type t, out string name)
+        private static bool IsSimpleType(Type t, out string name)
         {
             if (!t.IsGenericType)
             {
@@ -151,7 +151,7 @@ namespace ChangeTrackerExample.Configuration
             }
             else if (t.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
-                return IsNativeType(t.GetGenericArguments()[0], out name);
+                return IsSimpleType(t.GetGenericArguments()[0], out name);
             }
             else
             {

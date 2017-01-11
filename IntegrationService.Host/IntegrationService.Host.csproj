@@ -69,17 +69,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Converters\ConvertedMessage.cs" />
+    <Compile Include="Converters\FlatMessage.cs" />
     <Compile Include="Converters\IConverter.cs" />
     <Compile Include="DAL\Contexts\DataContext.cs" />
     <Compile Include="DAL\DataRepository.cs" />
     <Compile Include="DAL\DDL\TableColumnDefinition.cs" />
+    <Compile Include="DAL\RepositoryBase.cs" />
     <Compile Include="DAL\SchemaRepository.cs" />
+    <Compile Include="DAL\WriteDestination.cs" />
     <Compile Include="Domain\Mapping.cs" />
     <Compile Include="Listeners\ListenerHost.cs" />
     <Compile Include="Converters\FlatMessageConverter.cs" />
     <Compile Include="Buses.cs" />
-    <Compile Include="Listeners\Subscription.cs" />
+    <Compile Include="Listeners\MessageReceivedEventArgs.cs" />
+    <Compile Include="Listeners\RawMessage.cs" />
     <Compile Include="Metadata\ActivatedSchemaEventArgs.cs" />
     <Compile Include="Metadata\ISSynchronizerHost.cs" />
     <Compile Include="Metadata\DBSchemaService.cs" />
@@ -88,6 +91,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DAL\Contexts\SchemaContext.cs" />
+    <Compile Include="Writers\RowByRowWriter.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

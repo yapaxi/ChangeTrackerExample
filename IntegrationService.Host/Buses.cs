@@ -9,6 +9,7 @@ namespace IntegrationService.Host
     public static class Buses
     {
         public static readonly string ISSync = "ISSync";
-        public static readonly string Messaging = "Messaging";
+        public static readonly string SimpleMessaging = "Messaging";
+        public static readonly string BulkMessaging = "BulkMessaging";
     }
 }

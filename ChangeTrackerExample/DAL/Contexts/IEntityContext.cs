@@ -8,6 +8,6 @@ namespace ChangeTrackerExample.DAL.Contexts
 {
     public interface IEntityContext : IDisposable
     {
-        IQueryable<TEntity> Get<TEntity>() where TEntity : class;
+        IQueryable<TEntity> ReadonlyGet<TEntity>() where TEntity : class;
     }
 }

@@ -18,18 +18,16 @@ namespace IntegrationService.Host.Listeners
     public partial class ListenerHost : IDisposable
     {
         private readonly IBus _bus;
-        private readonly ILifetimeScope _scope;
-        private readonly Dictionary<string, Subscription> _subscriptions;
+        private readonly Dictionary<string, IDisposable> _subscriptions;
         private readonly object _lock;
 
         private bool _disposed;
 
-        public ListenerHost(ILifetimeScope scope)
+        public ListenerHost(IBus bus)
         {
-            _scope = scope;
             _lock = new object();
-            _subscriptions = new Dictionary<string, Subscription>();
-            _bus = _scope.ResolveNamed<IBus>(Buses.Messaging);
+            _subscriptions = new Dictionary<string, IDisposable>();
+            _bus = bus;
         }
 
         public void Reject(string entityName)
@@ -46,7 +44,7 @@ namespace IntegrationService.Host.Listeners
                     return;
                 }
 
-                Subscription currentSubscription;
+                IDisposable currentSubscription;
                 if (_subscriptions.TryGetValue(entityName, out currentSubscription))
                 {
                     currentSubscription.Dispose();
@@ -55,7 +53,7 @@ namespace IntegrationService.Host.Listeners
             }
         }
 
-        public void Accept(string entityName, string queue, RuntimeMappingSchema runtimeSchema, IStagingTable stagingTable)
+        public void Accept(string entityName, string queue, Action<RawMessage> callback)
         {
             if (_disposed)
             {
@@ -68,17 +66,22 @@ namespace IntegrationService.Host.Listeners
                 {
                     return;
                 }
-                
+
                 if (_subscriptions.ContainsKey(entityName))
                 {
-                    throw new InvalidOperationException($"Failed to create subscription for {entityName} -> {stagingTable.FullName}, because there is existing one");
+                    throw new InvalidOperationException($"Failed to create subscription for {entityName}, because there is existing one");
                 }
 
-                Console.WriteLine($"Creating new subscription for {entityName} -> {stagingTable.FullName}:{runtimeSchema.Schema.Checksum}");
+                Console.WriteLine($"Creating new subscription for {entityName}");
                 
-                var converter = new FlatMessageConverter(runtimeSchema);
-                var subscription = new Subscription(this, queue, converter, stagingTable);
-
+                var subscription = _bus.Advanced.Consume(
+                    new Queue(queue, false),
+                    (data, properties, info) => callback(new RawMessage()
+                    {
+                        Body = data,
+                        EntityId = (int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID]
+                    })
+                );
                 _subscriptions.Add(entityName, subscription);
             }
         }
@@ -95,7 +98,5 @@ namespace IntegrationService.Host.Listeners
                 _disposed = true;
             }
         }
-
-
     }
 }

@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.Converters
 {
-    interface IConverter
+    public interface IConverter<TMessage>
     {
         RuntimeMappingSchema RuntimeSchema { get; }
 
-        Dictionary<string, List<Dictionary<string, object>>> Convert(byte[] data);
+        TMessage Convert(byte[] data);
     }
 }
