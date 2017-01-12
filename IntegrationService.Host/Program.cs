@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EasyNetQ.Topology;
 using System.Diagnostics;
-using IntegrationService.Contracts.v2;
+using IntegrationService.Contracts.v3;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.DAL.Contexts;
 using IntegrationService.Host.Metadata;
@@ -39,13 +39,13 @@ namespace IntegrationService.Host
             containerBuilder.RegisterType<DataRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
 
-            containerBuilder.RegisterType<RowByRowWriter>().As<IWriter<FlatMessage>>();
             containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<RawMessage, FlatMessage>>().SingleInstance();
+            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<IEnumerable<RawMessage>, FlatMessage>>().SingleInstance();
             containerBuilder.RegisterType<DataFlow<RawMessage, FlatMessage>>().As<IDataFlow<RawMessage>>();
+            containerBuilder.RegisterType<DataFlow<IEnumerable<RawMessage>, FlatMessage>>().As<IDataFlow<IEnumerable<RawMessage>>>();
 
-            containerBuilder.RegisterType<BulkWriter>().As<IWriter<IEnumerable<FlatMessage>>>();
-            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>>().SingleInstance();
-            containerBuilder.RegisterType<DataFlow<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>>().As<IDataFlow<IEnumerable<RawMessage>>>();
+            containerBuilder.RegisterType<RowByRowWriter>().As<IWriter<FlatMessage>>();
+            containerBuilder.RegisterType<BulkWriter>().As<IWriter<FlatMessage>>();
 
             using (var container = containerBuilder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))

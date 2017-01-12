@@ -48,7 +48,8 @@ namespace ChangeTrackerExample
             {
                 scope.Resolve<ISSynchronizer>().Start();
 
-                var rabcom = new RabbitCommunicationModelBuilder(scope.ResolveNamed<IBus>(Buses.SimpleMessaging).Advanced);
+                var simpleRabcom = new RabbitCommunicationModelBuilder(DataMode.RowByRow, scope.ResolveNamed<IBus>(Buses.SimpleMessaging).Advanced);
+                var bulkRabcom = new RabbitCommunicationModelBuilder(DataMode.Bulk, scope.ResolveNamed<IBus>(Buses.BulkMessaging).Advanced);
 
                 BuildTrackerLoopback(
                     scope.ResolveNamed<IBus>(Buses.Loopback).Advanced,
@@ -57,11 +58,14 @@ namespace ChangeTrackerExample
 
                 foreach (var config in scope.Resolve<IEnumerable<EntityConfig>>())
                 {
-                    rabcom.BuildTrackerToISContract(config.DestinationExchange.Name, config.DestinationQueue.Name);
+                    simpleRabcom.BuildTrackerToISContract(config.DestinationExchange.Name, config.DestinationQueue.Name);
+                    bulkRabcom.BuildTrackerToISContract(config.DestinationExchange.Name, config.DestinationQueue.Name);
                 }
                 
                 RunLoopbackListener(scope);
-                RunBlockingDebugGenerator(scope);
+           //     RunBlockingDebugGenerator(scope);
+
+                Process.GetCurrentProcess().WaitForExit();
             }
         }
 
@@ -76,10 +80,12 @@ namespace ChangeTrackerExample
         {
             containerBuilder.Register(e =>
             {
+                var changeHandler = e.ResolveNamed<ChangeHandler>(Buses.BulkMessaging);
                 var sync = new ISSynchronizer(e.Resolve<ISClient>(), e.Resolve<IEnumerable<EntityConfig>>());
                 sync.OnSyncSucceeded += (s, o) => Console.WriteLine("Meta sync success");
                 sync.OnSyncFailed += (s, o) => Console.WriteLine("Meta sync failed");
                 sync.OnQueueFailed += (s, o) => Console.WriteLine("Meta sync queue failed");
+                sync.OnFullRebuildRequired += (s, o) => changeHandler.HandleEntityFullRebuild(o.SourceTypeClassName);
                 return sync;
             }).SingleInstance();
         }
@@ -132,7 +138,7 @@ namespace ChangeTrackerExample
             {
                 using (var innerScope = outerScope.BeginLifetimeScope())
                 {
-                    var handler = innerScope.Resolve<ChangeHandler>();
+                    var handler = innerScope.ResolveNamed<ChangeHandler>(Buses.SimpleMessaging);
                     handler.HandleEntityChanged(o.Type, o.Id);
                 }
             };
@@ -159,7 +165,17 @@ namespace ChangeTrackerExample
                 config: e.Resolve<EntityGroupedConfig>(),
                 context: e.Resolve<SourceContext>(),
                 bus: e.ResolveNamed<IBus>(Buses.SimpleMessaging)
-            )).InstancePerLifetimeScope();
+            ))
+            .Named(Buses.SimpleMessaging, typeof(ChangeHandler))
+            .InstancePerLifetimeScope();
+
+            containerBuilder.Register(e => new ChangeHandler(
+                config: e.Resolve<EntityGroupedConfig>(),
+                context: e.Resolve<SourceContext>(),
+                bus: e.ResolveNamed<IBus>(Buses.BulkMessaging)
+            ))
+            .Named(Buses.BulkMessaging, typeof(ChangeHandler))
+            .InstancePerLifetimeScope();
 
             containerBuilder.Register(e => new LoopbackNotifier(
                 bus: e.ResolveNamed<IBus>(Buses.Loopback),
@@ -190,7 +206,7 @@ namespace ChangeTrackerExample
                     InnerObject = new
                     {
                         Id = e.Id,
-                        Value = 100 * e.Lines.Average(q => q.EntityId),
+                        Value = (int?)e.Lines.Sum(q => q.EntityId),
                         NestedObject = new
                         {
                            Id = e.Id,

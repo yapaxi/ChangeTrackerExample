@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using IntegrationService.Host.DAL.DDL;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,8 @@ namespace IntegrationService.Host.DAL
         string SystemName { get; }
 
         IReadOnlyCollection<IStagingTable> Children { get; }
+
+        IReadOnlyCollection<TableColumnDefinition> Columns { get; }
     }
 
     public class StagingTable : IStagingTable
@@ -23,8 +26,12 @@ namespace IntegrationService.Host.DAL
 
         public List<StagingTable> Children { get; set; }
 
+        public TableColumnDefinition[] Columns { get; set; }
 
         [JsonIgnore]
         IReadOnlyCollection<IStagingTable> IStagingTable.Children => this.Children;
+
+        [JsonIgnore]
+        IReadOnlyCollection<TableColumnDefinition> IStagingTable.Columns => this.Columns;
     }
 }

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ChangeTrackerExample.Configuration;
 using IntegrationService.Client;
-using IntegrationService.Contracts.v2;
+using IntegrationService.Contracts.v3;
 using System.Threading;
 using EasyNetQ;
 using ChangeTrackerExample.App.Events;
@@ -35,7 +35,8 @@ namespace ChangeTrackerExample.App
         public event EventHandler<QueueFailedEventArgs> OnQueueFailed;
         public event EventHandler<ISSyncFailedEventArgs> OnSyncFailed;
         public event EventHandler<EventArgs> OnSyncSucceeded;
-        
+        public event EventHandler<FullRebuildRequiredEventArgs> OnFullRebuildRequired;
+
         public void Start()
         {
             if (_configurations.Any())
@@ -93,7 +94,7 @@ namespace ChangeTrackerExample.App
             ).ToArray();
 
             var allSucceeded = result.All(e => e.Response.Result == SyncMetadataResult.Success);
-
+            
             if (allSucceeded)
             {
                 lock (_lock)
@@ -101,6 +102,10 @@ namespace ChangeTrackerExample.App
                     _timer.Change(Timeout.Infinite, Timeout.Infinite);
                 }
                 OnSyncSucceeded?.Invoke(this, EventArgs.Empty);
+                foreach (var frb in result.Where(e => e.Response.FullRebuildRequired))
+                {
+                    OnFullRebuildRequired?.Invoke(this, new FullRebuildRequiredEventArgs(frb.Request.SourceTypeFullName));
+                }
             }
             else
             {
@@ -124,6 +129,7 @@ namespace ChangeTrackerExample.App
                 Items = _configurations.Select(e => new SyncMetadataRequestItem()
                 {
                     Schema = e.Entity.MappingSchema,
+                    SourceTypeFullName = e.Entity.SourceType.FullName,
                     Name = e.FullName,
                     QueueName = e.DestinationQueue.Name
                 }).ToArray()

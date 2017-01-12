@@ -16,7 +16,7 @@ namespace Common
             FindObjects(MappingSchema.RootName, this.Schema.Properties, buffer);
             Objects = buffer;
             FlatProperties = ConverToFlatProperties(buffer);
-            TypeCache = FlatProperties.Select(e => e.Value.ClrType).Where(e => e != null).Distinct().ToDictionary(e => e, e => Type.GetType(e));
+            TypeCache = FlatProperties.Select(e => e.Value.ClrType).Where(e => e != null).Distinct().ToDictionary(e => e, e => Unwrap(Type.GetType(e)));
         }
 
         public IReadOnlyDictionary<string, Type> TypeCache { get; }
@@ -31,6 +31,16 @@ namespace Common
             {
                 FindObjects(v.PathName, v.Children, buffer);
             }
+        }
+
+        private static Type Unwrap(Type t)
+        {
+            if (t.IsGenericType)
+            {
+                return t.GetGenericArguments()[0];
+            }
+
+            return t;
         }
 
         private static Dictionary<string, MappingProperty> ConverToFlatProperties(Dictionary<string, MappingProperty[]> buffer)

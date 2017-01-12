@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EasyNetQ;
-using IntegrationService.Contracts.v2;
+using IntegrationService.Contracts.v3;
 
 namespace IntegrationService.Client
 {

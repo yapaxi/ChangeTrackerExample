@@ -20,6 +20,7 @@ namespace ChangeTrackerExample.App
         private IDisposable _subscription;
 
         public event EventHandler<EntityChangedEventArgs> EntityChanged;
+        public event EventHandler<EntityRangeEventArgs> EntityRangeChanged;
 
         public LoopbackListener(IBus bus, IQueue queue)
         {

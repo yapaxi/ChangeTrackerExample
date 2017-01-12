@@ -26,24 +26,14 @@ namespace IntegrationService.Host.Metadata
             {
                 using (var tran = _repository.BeginTransaction())
                 {
-                    var stagingTable = ActivateSchemaInternal(name, queueName, schema);
-
+                    var result = ActivateSchemaInternal(name, queueName, schema);
                     tran.Commit();
-
-                    return new SchemaActivationResult()
-                    {
-                        StagingTable = stagingTable,
-                        Name = name,
-                    };
+                    return result;
                 }
             }
             catch (Exception e)
             {
-                return new SchemaActivationResult()
-                {
-                    Exception = e,
-                    Name = name,
-                };
+                return new SchemaActivationResult(name, e);
             }
         }
 
@@ -52,7 +42,7 @@ namespace IntegrationService.Host.Metadata
             return _repository.Mappings.Where(e => e.IsActive).ToArray();
         }
 
-        private IStagingTable ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
+        private SchemaActivationResult ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
         {
             var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
             var existing = mappings.FirstOrDefault(e => e.Checksum == schema.Checksum);
@@ -63,18 +53,22 @@ namespace IntegrationService.Host.Metadata
                 if (existing.IsActive)
                 {
                     Console.WriteLine("Already active, nothing to do");
-                    return JsonConvert.DeserializeObject<StagingTable>(existing.StagingTables);
+                    var stagingTable = JsonConvert.DeserializeObject<StagingTable>(existing.StagingTables);
+                    return new SchemaActivationResult(name, stagingTable);
                 }
                 else
                 {
                     Console.WriteLine("Reactivating");
+
                     var stagingTable = CreateTables(name, schema.Properties);
 
                     DeactivateAll(mappings);
+
                     Activate(existing);
 
                     _repository.SaveChanges();
-                    return stagingTable;
+
+                    return new SchemaActivationResult(name, stagingTable, fullRebuildRequired: true);
                 }
             }
             else
@@ -106,7 +100,8 @@ namespace IntegrationService.Host.Metadata
                 });
 
                 _repository.SaveChanges();
-                return stagingTable;
+
+                return new SchemaActivationResult(name, stagingTable, fullRebuildRequired: true);
             }
         }
 
@@ -114,12 +109,12 @@ namespace IntegrationService.Host.Metadata
         {
             var simpleProperties = newSchema
                 .Where(e => !e.Children.Any())
-                .Select(e => new TableColumnDefinition()
-                {
-                    Name = e.ShortName,
-                    IsNullable = IsNullable(e.ClrType),
-                    SqlType = GetSqlTypeForClrType(e.ClrType, e.Size),
-                }).ToArray();
+                .Select(e => new TableColumnDefinition(
+                    e.ShortName,
+                    e.ClrType,
+                    GetSqlTypeForClrType(e.ClrType, e.Size),
+                    IsNullable(e.ClrType))
+                ).ToArray();
 
             var table = _repository.CreateStagingTable(name, simpleProperties);
 
@@ -136,6 +131,17 @@ namespace IntegrationService.Host.Metadata
         private string GetSqlTypeForClrType(string clrType, int? size)
         {
             var type = Type.GetType(clrType);
+
+            if (type.IsGenericType)
+            {
+                return GetSqlTypeForClrTypeInternal(type.GetGenericArguments()[0], size);
+            }
+
+            return GetSqlTypeForClrTypeInternal(type, size);
+        }
+
+        private static string GetSqlTypeForClrTypeInternal(Type type, int? size)
+        {
             if (type == typeof(string))
             {
                 return size == null ? "nvarchar(max)" : $"nvarchar({size})";
@@ -166,7 +172,9 @@ namespace IntegrationService.Host.Metadata
                 return "float";
             }
 
-            throw new InvalidOperationException($"Unexpected type: {clrType} -> {type}");
+
+
+            throw new InvalidOperationException($"Unexpected type: {type}");
         }
 
         private bool IsNullable(string clrType)

@@ -17,4 +17,18 @@ namespace ChangeTrackerExample.App.Events
         public int Id { get; }
         public string Type { get; }
     }
+
+    public class EntityRangeEventArgs : EventArgs
+    {
+        public EntityRangeEventArgs(int fromId, int toId, string type)
+        {
+            this.FromId = fromId;
+            this.ToId = toId;
+            this.Type = type;
+        }
+
+        public int FromId { get; }
+        public int ToId { get; }
+        public string Type { get; }
+    }
 }

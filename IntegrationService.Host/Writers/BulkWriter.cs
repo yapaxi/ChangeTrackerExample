@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.Writers
 {
-    public class BulkWriter : IWriter<IEnumerable<FlatMessage>>
+    public class BulkWriter : IWriter<FlatMessage>
     {
         private readonly DataRepository _repository;
 
@@ -18,9 +18,14 @@ namespace IntegrationService.Host.Writers
             _repository = repository;
         }
 
-        public void Write(IEnumerable<FlatMessage> rootFlattenRepresentation, WriteDestination destination)
+        public void Write(IEnumerable<FlatMessage> roots, WriteDestination destination)
         {
-
+            foreach (var k in roots.SelectMany(e => e.Payload).GroupBy(e => e.Key))
+            {
+                var agg = k.Select(e => e.Value).Aggregate(new List<Dictionary<string, object>>(), (a, b) => { a.AddRange(b); return a; });
+                var table = destination.FlattenTables[k.Key];
+                _repository.BulkInsert(table, agg);
+            }
         }
     }
 }

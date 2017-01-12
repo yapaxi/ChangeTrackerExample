@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IntegrationService.Contracts.v2
+namespace IntegrationService.Contracts.v3
 {
     public class SyncMetadataRequest
     {
@@ -17,5 +17,6 @@ namespace IntegrationService.Contracts.v2
         public string Name { get; set; }
         public MappingSchema Schema { get; set; }
         public string QueueName { get; set; }
+        public string SourceTypeFullName { get; set; }
     }
 }

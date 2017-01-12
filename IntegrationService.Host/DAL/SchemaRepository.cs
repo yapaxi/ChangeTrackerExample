@@ -32,7 +32,12 @@ namespace IntegrationService.Host.DAL
             var tableName = FormatTableName(STAGING_SCHEMA_NAME, schemalessTableName);
             MoveOldStagingTableIfExists(schemalessTableName);
             CreateTableInternal(tableName, columns);
-            return new StagingTable() { FullName = tableName, SystemName = schemalessTableName };
+            return new StagingTable()
+            {
+                FullName = tableName,
+                SystemName = schemalessTableName,
+                Columns = columns
+            };
         }
 
         private string CreateTableInternal(string fqTableName, TableColumnDefinition[] columns)

@@ -38,7 +38,7 @@ namespace IntegrationService.Host.Listeners.Data
                             return;
                         }
 
-                        _messages.Add(new RawMessage((int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID], data));
+                        _messages.Add(new RawMessage(-1, data));
                     }
                 }
             );

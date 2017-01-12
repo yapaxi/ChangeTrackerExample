@@ -18,19 +18,22 @@ namespace IntegrationService.Host.Writers
             _repository = repository;
         }
 
-        public void Write(FlatMessage rootFlattenRepresentation, WriteDestination destination)
+        public void Write(IEnumerable<FlatMessage> messages, WriteDestination destination)
         {
             Console.WriteLine($"\tinserting...");
             Console.Write("\t");
             using (var tran = _repository.BeginTransaction(System.Data.IsolationLevel.ReadCommitted))
             {
-                foreach (var rootElement in rootFlattenRepresentation.Payload)
+                foreach (var message in messages)
                 {
-                    var table = destination.FlattenTables[rootElement.Key];
-                    Console.Write(table.SystemName + "... ");
-                    foreach (var line in rootElement.Value)
+                    foreach (var messageElement in message.Payload)
                     {
-                        _repository.Merge(table.FullName, line);
+                        var table = destination.FlattenTables[messageElement.Key];
+                        Console.Write(table.SystemName + "... ");
+                        foreach (var line in messageElement.Value)
+                        {
+                            _repository.Merge(table.FullName, line);
+                        }
                     }
                 }
 

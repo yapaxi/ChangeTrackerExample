@@ -12,10 +12,12 @@ namespace RabbitModel
 {
     public class RabbitCommunicationModelBuilder
     {
+        private readonly DataMode _mode;
         private readonly IAdvancedBus _advancedBus;
 
-        public RabbitCommunicationModelBuilder(IAdvancedBus model)
+        public RabbitCommunicationModelBuilder(DataMode mode, IAdvancedBus model)
         {
+            _mode = mode;
             _advancedBus = model;
         }
 
@@ -47,7 +49,16 @@ namespace RabbitModel
                 throw new ArgumentNullException(nameof(outputName));
             }
 
-            return _advancedBus.QueueDeclare(outputName, durable: true);
+            switch (_mode)
+            {
+                case DataMode.RowByRow:
+                    return _advancedBus.QueueDeclare(outputName, durable: true);
+                case DataMode.Bulk:
+                    return _advancedBus.QueueDeclare(outputName, durable: false);
+                default:
+                    throw new InvalidOperationException($"Unexpected mode {_mode}");
+            }
+
         }
     }
 }

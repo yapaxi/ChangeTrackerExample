@@ -72,6 +72,7 @@
   <ItemGroup>
     <Compile Include="App\ChangeHandler.cs" />
     <Compile Include="App\Events\EntityChangedEventArgs.cs" />
+    <Compile Include="App\Events\FullRebuildRequiredEventArgs.cs" />
     <Compile Include="App\Events\QueueFailedEventArgs.cs" />
     <Compile Include="App\ISSynchronizer.cs" />
     <Compile Include="App\Events\ISSyncFailedEventArgs.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Configuration\RegisteredEntity.cs" />
     <Compile Include="DAL\Contexts\IEntityContext.cs" />
     <Compile Include="DAL\Contexts\SourceContext.cs" />
+    <Compile Include="Domain\EntityRange.cs" />
     <Compile Include="Domain\IEntity.cs" />
     <Compile Include="Domain\Line.cs" />
     <Compile Include="Domain\SomeEntity.cs" />

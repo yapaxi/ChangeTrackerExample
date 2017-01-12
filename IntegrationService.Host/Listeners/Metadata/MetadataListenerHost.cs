@@ -1,7 +1,7 @@
 ﻿using Autofac;
 using Common;
 using EasyNetQ;
-using IntegrationService.Contracts.v2;
+using IntegrationService.Contracts.v3;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.Metadata;
 using Newtonsoft.Json;
@@ -133,6 +133,7 @@ namespace IntegrationService.Host.Listeners.Metadata
 
                 if (activatedSchema.FullRebuildRequired)
                 {
+                    OnDeactivatedSchema?.Invoke(this, new SchemaEventArgs(details.Name));
                     OnBulkActivatedSchema?.Invoke(this, eventArgs);
                 }
                 else
