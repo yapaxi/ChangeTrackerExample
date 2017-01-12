@@ -13,6 +13,7 @@ using IntegrationService.Host.Converters;
 using System.Threading;
 using RabbitModel;
 using IntegrationService.Host.Listeners.Metadata;
+using IntegrationService.Host.Writers;
 
 namespace IntegrationService.Host.Listeners.Data
 {
@@ -63,8 +64,9 @@ namespace IntegrationService.Host.Listeners.Data
                 }
             }
         }
+        
 
-        public void BindBulk(string entityName, string queue, Action<ILifetimeScope, IReadOnlyCollection<RawMessage>> onMessage)
+        public void Bind(DataMode mode, string entityName, string queue, RuntimeMappingSchema schema, WriteDestination destination)
         {
             if (_disposed)
             {
@@ -80,31 +82,45 @@ namespace IntegrationService.Host.Listeners.Data
 
                 EnsureSubscriptionNotExists(entityName);
 
-                var subscription = new BufferingSubscription(this, _bulkBus.Advanced, new Queue(queue, false), onMessage);
+                var subscription = CreateSubscription(mode, queue, schema, destination);
 
-                _subscriptions[DataMode.Bulk].Add(entityName, subscription);
+                _subscriptions[mode].Add(entityName, subscription);
             }
         }
 
-        public void BindRowByRow(string entityName, string queue, Action<ILifetimeScope, RawMessage> onMessage)
+        private IDisposable CreateSubscription(DataMode mode, string queue, RuntimeMappingSchema schema, WriteDestination destination)
         {
-            if (_disposed)
+            switch (mode)
             {
-                throw new ObjectDisposedException(nameof(DataListenerHost));
+                case DataMode.RowByRow:
+                    return new StreamingSubscription(
+                        bus: _simpleBus.Advanced,
+                        queue: new Queue(queue, false),
+                        onMessage: (message) => HandleMessage(schema, destination, message));
+                case DataMode.Bulk:
+                    return new BufferingSubscription(
+                        bus: _bulkBus.Advanced,
+                        queue: new Queue(queue, false),
+                        onMessage: (message) => HandleMessage(schema, destination, message)
+                    );
+                default:
+                    throw new InvalidOperationException($"Unexpected data mode: {mode}");
             }
+        }
 
-            lock (_lock)
+        private void HandleMessage<TSource>(RuntimeMappingSchema schema, WriteDestination destination, TSource message)
+        {
+            var schemaParam = GenericParameter.From(schema);
+            var destinationParam = GenericParameter.From(destination);
+
+            try
             {
-                if (_disposed)
-                {
-                    return;
-                }
-
-                EnsureSubscriptionNotExists(entityName);
-
-                var subscription = new StreamingSubscription(this, _simpleBus.Advanced, new Queue(queue, false), onMessage);
-
-                _subscriptions[DataMode.RowByRow].Add(entityName, subscription);
+                UsingScope(e => e.Resolve<IDataFlow<TSource>>(schemaParam, destinationParam).Write(message));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
             }
         }
 
@@ -116,6 +132,11 @@ namespace IntegrationService.Host.Listeners.Data
             }
 
             Console.WriteLine($"Creating new subscription for {entityName}");
+        }
+
+        private class GenericParameter
+        {
+            public static TypedParameter From<T>(T instance) => new TypedParameter(typeof(T), instance);
         }
 
         public void Dispose()

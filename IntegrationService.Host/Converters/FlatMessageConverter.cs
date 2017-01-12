@@ -16,24 +16,18 @@ namespace IntegrationService.Host.Converters
         IConverter<RawMessage, FlatMessage>,
         IConverter<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>
     {
-        public RuntimeMappingSchema RuntimeSchema { get; }
-
-        public FlatMessageConverter(RuntimeMappingSchema runtimeSchema)
-        {
-            RuntimeSchema = runtimeSchema;
-        }
         
-        public IEnumerable<FlatMessage> Convert(IEnumerable<RawMessage> data)
+        public IEnumerable<FlatMessage> Convert(IEnumerable<RawMessage> data, RuntimeMappingSchema runtimeSchema)
         {
             foreach (var v in data)
             {
-                yield return Convert(v);
+                yield return Convert(v, runtimeSchema);
             }
         }
 
-        public FlatMessage Convert(RawMessage data)
+        public FlatMessage Convert(RawMessage data, RuntimeMappingSchema runtimeSchema)
         {
-            var properties = RuntimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>());
+            var properties = runtimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>());
 
             using (var r = new JsonTextReader(new StringReader(Encoding.Unicode.GetString(data.Body))))
             {
@@ -57,11 +51,11 @@ namespace IntegrationService.Host.Converters
                         case JsonToken.Integer:
                             var path = RemoveArrayElement(r.Path);
                             MappingProperty mapping;
-                            if (!RuntimeSchema.FlatProperties.TryGetValue(path, out mapping))
+                            if (!runtimeSchema.FlatProperties.TryGetValue(path, out mapping))
                             {
                                 throw new Exception($"[{nameof(FlatMessageConverter)}] Unexpected property: {path}. Convertion is aborted.");
                             }
-                            lineStack.Peek().Add(currentProperty, System.Convert.ChangeType(r.Value, RuntimeSchema.TypeCache[mapping.ClrType]));
+                            lineStack.Peek().Add(currentProperty, System.Convert.ChangeType(r.Value, runtimeSchema.TypeCache[mapping.ClrType]));
                             break;
                         case JsonToken.PropertyName:
                             currentProperty = (string)r.Value;

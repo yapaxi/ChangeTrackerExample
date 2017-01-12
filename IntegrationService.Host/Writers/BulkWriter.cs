@@ -12,15 +12,13 @@ namespace IntegrationService.Host.Writers
     public class BulkWriter : IWriter<IEnumerable<FlatMessage>>
     {
         private readonly DataRepository _repository;
-        private readonly WriteDestination _destination;
 
-        public BulkWriter(DataRepository repository, WriteDestination destination)
+        public BulkWriter(DataRepository repository)
         {
             _repository = repository;
-            _destination = destination;
         }
 
-        public void Write(IEnumerable<FlatMessage> rootFlattenRepresentation)
+        public void Write(IEnumerable<FlatMessage> rootFlattenRepresentation, WriteDestination destination)
         {
 
         }

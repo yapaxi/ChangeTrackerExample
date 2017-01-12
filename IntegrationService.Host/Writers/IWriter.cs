@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IntegrationService.Host.DAL;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,6 @@ namespace IntegrationService.Host.Writers
 {
     public interface IWriter<TData>
     {
-        void Write(TData rootFlattenRepresentation);
+        void Write(TData rootFlattenRepresentation, WriteDestination destination);
     }
 }

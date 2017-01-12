@@ -38,9 +38,14 @@ namespace IntegrationService.Host
             containerBuilder.RegisterType<SchemaRepository>();
             containerBuilder.RegisterType<DataRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
+
+            containerBuilder.RegisterType<RowByRowWriter>().As<IWriter<FlatMessage>>();
             containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<RawMessage, FlatMessage>>().SingleInstance();
+            containerBuilder.RegisterType<DataFlow<RawMessage, FlatMessage>>().As<IDataFlow<RawMessage>>();
+
+            containerBuilder.RegisterType<BulkWriter>().As<IWriter<IEnumerable<FlatMessage>>>();
             containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>>().SingleInstance();
-            containerBuilder.RegisterType<RowByRowWriter>();
+            containerBuilder.RegisterType<DataFlow<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>>().As<IDataFlow<IEnumerable<RawMessage>>>();
 
             using (var container = containerBuilder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
@@ -49,19 +54,11 @@ namespace IntegrationService.Host
             {
                 metadataListenerHost.OnDeactivatedSchema += (s, e) => dataListenerHost.UnbindAll(e.EntityName);
 
-                metadataListenerHost.OnBulkActivatedSchema += (s, e) => dataListenerHost.BindBulk
-                (
-                    e.EntityName,
-                    e.Queue,
-                    (scope, rawMessages) => new WriteDispatcher<IEnumerable<RawMessage>, IEnumerable<FlatMessage>>(scope, e.Schema, e.Destination).Write(rawMessages)
-                );
+                metadataListenerHost.OnBulkActivatedSchema += 
+                    (s, e) => dataListenerHost.Bind(DataMode.Bulk, e.EntityName, e.Queue, e.Schema, e.Destination);
 
-                metadataListenerHost.OnRowByRowActivatedSchema += (s, e) => dataListenerHost.BindRowByRow
-                (
-                    e.EntityName,
-                    e.Queue, 
-                    (scope, rawMessage) => new WriteDispatcher<RawMessage, FlatMessage>(scope, e.Schema, e.Destination).Write(rawMessage)
-                );
+                metadataListenerHost.OnRowByRowActivatedSchema += 
+                    (s, e) => dataListenerHost.Bind(DataMode.RowByRow, e.EntityName, e.Queue, e.Schema, e.Destination);
 
                 metadataListenerHost.RecoverKnownSchemas();
                 metadataListenerHost.StartAcceptingExternalSchemas();
@@ -70,26 +67,6 @@ namespace IntegrationService.Host
                 Process.GetCurrentProcess().WaitForExit();
             }
         }
-
-#warning REWRITE
-
-        private class WriteDispatcher<TSource, TResult>
-        {
-            private readonly IConverter<TSource, TResult> _converter;
-            private readonly IWriter<TResult> _writer;
-
-            public WriteDispatcher(ILifetimeScope scope, RuntimeMappingSchema schema, WriteDestination destination)
-            {
-                var schemaParam = new TypedParameter(typeof(RuntimeMappingSchema), schema);
-                var destinationParam = new TypedParameter(typeof(WriteDestination), destination);
-                _converter = scope.Resolve<IConverter<TSource, TResult>>(schemaParam);
-                _writer = scope.Resolve<IWriter<TResult>>(destinationParam);
-            }
-
-            public void Write(TSource rawMessage)
-            {
-                _writer.Write(_converter.Convert(rawMessage));
-            }
-        }
+        
     }
 }

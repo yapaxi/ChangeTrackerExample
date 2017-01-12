@@ -12,15 +12,13 @@ namespace IntegrationService.Host.Writers
     public class RowByRowWriter : IWriter<FlatMessage>
     {
         private readonly DataRepository _repository;
-        private readonly WriteDestination _destination;
 
-        public RowByRowWriter(DataRepository repository, WriteDestination destination)
+        public RowByRowWriter(DataRepository repository)
         {
             _repository = repository;
-            _destination = destination;
         }
 
-        public void Write(FlatMessage rootFlattenRepresentation)
+        public void Write(FlatMessage rootFlattenRepresentation, WriteDestination destination)
         {
             Console.WriteLine($"\tinserting...");
             Console.Write("\t");
@@ -28,7 +26,7 @@ namespace IntegrationService.Host.Writers
             {
                 foreach (var rootElement in rootFlattenRepresentation.Payload)
                 {
-                    var table = _destination.FlattenTables[rootElement.Key];
+                    var table = destination.FlattenTables[rootElement.Key];
                     Console.Write(table.SystemName + "... ");
                     foreach (var line in rootElement.Value)
                     {

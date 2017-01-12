@@ -39,14 +39,22 @@ namespace IntegrationService.Host.Listeners.Metadata
 
                 foreach (var mapping in service.GetActiveMappings())
                 {
-                    OnRowByRowActivatedSchema?.Invoke(
-                            this,
-                            new ActivatedSchemaEventArgs(
-                                mapping.QueueName,
-                                mapping.Name,
-                                new RuntimeMappingSchema(JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema)),
-                                new WriteDestination(JsonConvert.DeserializeObject<StagingTable>(mapping.StagingTables)))
-                    );
+                    try
+                    {
+                        OnRowByRowActivatedSchema?.Invoke(
+                                this,
+                                new ActivatedSchemaEventArgs(
+                                    mapping.QueueName,
+                                    mapping.Name,
+                                    new RuntimeMappingSchema(JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema)),
+                                    new WriteDestination(JsonConvert.DeserializeObject<StagingTable>(mapping.StagingTables)))
+                        );
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
                 }
             });
         }

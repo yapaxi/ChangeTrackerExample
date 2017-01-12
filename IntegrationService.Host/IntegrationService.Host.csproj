@@ -94,9 +94,11 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DAL\Contexts\SchemaContext.cs" />
+    <Compile Include="Writers\IDataFlow.cs" />
     <Compile Include="Writers\IWriter.cs" />
     <Compile Include="Writers\BulkWriter.cs" />
     <Compile Include="Writers\RowByRowWriter.cs" />
+    <Compile Include="Writers\DataFlow.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
