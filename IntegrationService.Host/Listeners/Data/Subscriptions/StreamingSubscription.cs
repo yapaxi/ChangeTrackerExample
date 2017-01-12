@@ -33,7 +33,7 @@ namespace IntegrationService.Host.Listeners.Data
                         }
                     }
 
-                    onMessage(new RawMessage((int)properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID], data));
+                    onMessage(new RawMessage(data, (int)properties.Headers[ISMessageHeader.ENTITY_COUNT]));
                 }
             );
         }

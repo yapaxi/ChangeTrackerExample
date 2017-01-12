@@ -67,11 +67,14 @@ namespace ChangeTrackerExample.Configuration
             return context.ReadonlyGet<TSource>().Where(e => e.Id >= fromId && e.Id <= toId).Select(Mapper).ToList();
         }
 
-        public EntityRange GetEntityRanges(IEntityContext context)
+        public EntityRange[] GetEntityRanges(IEntityContext context, int rangeLength)
         {
-            var minId = context.ReadonlyGet<TSource>().Min(e => e.Id);
-            var maxId = context.ReadonlyGet<TSource>().Max(e => e.Id);
-            return new EntityRange(minId, maxId);
+            return context.ReadonlyGet<TSource>()
+                .GroupBy(e => e.Id % rangeLength)
+                .Select(e => new { Key = e.Key, Min = e.Min(q => q.Id), Max = e.Max(q => q.Id) })
+                .OrderBy(e => e.Key)
+                .ToArray()
+                .Select(e => new EntityRange() { MinId = e.Min, MaxId = e.Max }).ToArray();
         }
 
         private long GetMD5(string str)
@@ -192,6 +195,6 @@ namespace ChangeTrackerExample.Configuration
         IReadOnlyDictionary<string, ParentChildConfiguration> Children { get; }
         object GetAndMapById(IEntityContext context, int id);
         IReadOnlyCollection<object> GetAndMapByRange(IEntityContext context, int fromId, int toId);
-        EntityRange GetEntityRanges(IEntityContext context);
+        EntityRange[] GetEntityRanges(IEntityContext context, int rangeLength);
     }
 }

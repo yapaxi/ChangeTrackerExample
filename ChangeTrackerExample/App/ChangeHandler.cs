@@ -42,7 +42,9 @@ namespace ChangeTrackerExample.App
                     throw new Exception($"Entity \"{config.Entity.SourceType}\" with id {id} received from {config.DestinationConfig} not found in context {config.Entity.ContextType}");
                 }
 
-                var properties = CreateProperties(config, id, deliveryMode: 2);
+                var properties = CreateDefaultProperties(config, deliveryMode: 2);
+                properties.Headers[ISMessageHeader.ENTITY_COUNT] = 1;
+
                 var bytes = GetEntityBytes(new[] { mappedEntity });
                 _bus.Advanced.Publish(config.DestinationExchange, "", false, properties, bytes);
                 Console.WriteLine($"Sent to destination: {id}");
@@ -54,11 +56,11 @@ namespace ChangeTrackerExample.App
             var configs = GetConfigurationOrFail(entityTypeFullName);
             foreach (var config in configs)
             {
-                var globalRange = config.Entity.GetEntityRanges(_context);
-                var ranges = Split(globalRange, 1000);
+                var ranges = config.Entity.GetEntityRanges(_context, 1000);
 
-                foreach (var range in ranges)
+                for (var i = 0; i < ranges.Length; i++)
                 {
+                    var range = ranges[i];
                     var mappedEntities = config.Entity.GetAndMapByRange(_context, range.MinId, range.MaxId);
 
                     if (!mappedEntities.Any())
@@ -66,7 +68,12 @@ namespace ChangeTrackerExample.App
                         return;
                     }
 
-                    var properties = CreateProperties(config, -1, deliveryMode: 1);
+                    var properties = CreateDefaultProperties(config, deliveryMode: 1);
+                    properties.Headers[ISMessageHeader.ENTITY_COUNT] = mappedEntities.Count;
+                    properties.Headers[ISMessageHeader.BATCH_IS_LAST] = i == ranges.Length - 1;
+                    properties.Headers[ISMessageHeader.BATCH_ORDINAL] = i;
+                    properties.Headers[ISMessageHeader.BATCH_COUNT] = ranges.Length;
+
                     var bytes = GetEntityBytes(mappedEntities);
 
                     _bus.Advanced.Publish(config.DestinationExchange, "", false, properties, bytes);
@@ -82,31 +89,14 @@ namespace ChangeTrackerExample.App
             var bytes = GetBytes(json);
             return bytes;
         }
-
-        private IEnumerable<EntityRange> Split(EntityRange range, int count)
-        {
-            if (count >= range.Length)
-            {
-                yield return range;
-                yield break;
-            }
-
-            var min = range.MinId;
-            while (min <= range.MaxId)
-            {
-                yield return new EntityRange(min, min + count);
-                min += count + 1;
-            }
-        }
-
-        private static MessageProperties CreateProperties(EntityConfig config, int id, byte deliveryMode)
+        
+        private static MessageProperties CreateDefaultProperties(EntityConfig config, byte deliveryMode)
         {
             var properties = new MessageProperties();
             properties.ContentType = "application/json";
             properties.DeliveryMode = deliveryMode;
             properties.Headers = new Dictionary<string, object>();
             properties.Headers[ISMessageHeader.SCHEMA_CHECKSUM] = config.Entity.MappingSchema.Checksum;
-            properties.Headers[ISMessageHeader.SCHEMA_ENTITY_ID] = id;
             return properties;
         }
 

@@ -38,12 +38,12 @@ namespace IntegrationService.Host.Listeners.Data
                             return;
                         }
 
-                        _messages.Add(new RawMessage(-1, data));
+                        _messages.Add(new RawMessage(data, (int)properties.Headers[ISMessageHeader.ENTITY_COUNT]));
                     }
                 }
             );
 
-            _timer = new Timer(Flush, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+            _timer = new Timer(Flush, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         }
 
         private void Flush(object state)
@@ -73,9 +73,9 @@ namespace IntegrationService.Host.Listeners.Data
             lock (_lock)
             {
                 _disposed = true;
+                _subscription.Dispose();
+                _timer.Dispose();
             }
-
-            _subscription.Dispose();
         }
     }
 }

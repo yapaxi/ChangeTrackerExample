@@ -8,14 +8,8 @@ namespace ChangeTrackerExample.Domain
 {
     public class EntityRange
     {
-        public EntityRange(int minId, int maxId)
-        {
-            this.MinId = minId;
-            this.MaxId = maxId;
-        }
-
-        public int MinId { get; }
-        public int MaxId { get; }
+        public int MinId { get; set; }
+        public int MaxId { get; set; }
 
         public int Length => MaxId - MinId + 1;
     }
