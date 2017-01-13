@@ -25,17 +25,17 @@ namespace RabbitModel
         {
 
             builder
-                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost=ISSync;username=test;password=test"))
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.ISSync};username=test;password=test"))
                 .Named<IBus>(Buses.ISSync)
                 .InstancePerMatchingLifetimeScope(_scope);
 
             builder
-                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost=SimpleMessaging;username=test;password=test"))
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.SimpleMessaging};username=test;password=test"))
                 .Named<IBus>(Buses.SimpleMessaging)
                 .InstancePerMatchingLifetimeScope(_scope);
 
             builder
-                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost=BulkMessaging;username=test;password=test"))
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.BulkMessaging};username=test;password=test"))
                 .Named<IBus>(Buses.BulkMessaging)
                 .InstancePerMatchingLifetimeScope(_scope);
 

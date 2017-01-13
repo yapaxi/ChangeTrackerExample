@@ -29,6 +29,8 @@ namespace IntegrationService.Host.DAL
 
         public StagingTable CreateStagingTable(string schemalessTableName, TableColumnDefinition[] columns)
         {
+            CreateSchemaIfNotExists(STAGING_SCHEMA_NAME);
+
             var tableName = FormatTableName(STAGING_SCHEMA_NAME, schemalessTableName);
             MoveOldStagingTableIfExists(schemalessTableName);
             CreateTableInternal(tableName, columns);
@@ -67,13 +69,19 @@ namespace IntegrationService.Host.DAL
             if (exists)
             {
                 Console.WriteLine($"Table {existingTableName} found, moving to {fqNewTableName}");
+                CreateSchemaIfNotExists(DEACTIVATED_SCHEMA_NAME);
                 Context.Database.ExecuteSqlCommand($"alter schema [{DEACTIVATED_SCHEMA_NAME}] transfer {existingTableName}");
-                Context.Database.ExecuteSqlCommand($"sp_rename '{fqMovedTableName}', '{schemalessNewTableName}'");
+                Context.Database.ExecuteSqlCommand("sp_rename {0}, {1}", fqMovedTableName, schemalessNewTableName);
             }
             else
             {
                 Console.WriteLine($"Table {existingTableName} not found");
             }
+        }
+
+        private void CreateSchemaIfNotExists(string name)
+        {
+            Context.Database.ExecuteSqlCommand($"if (schema_id('{name}') is null) begin exec sp_executesql N'create schema [{name}]'; end ");
         }
 
         private static string FormatTableName(string schema, string tableName)

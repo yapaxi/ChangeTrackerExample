@@ -19,8 +19,8 @@ using IntegrationService.Host.Converters;
 using IntegrationService.Host.Writers;
 using Autofac.Core;
 using Common;
-using IntegrationService.Host.Listeners.Metadata;
 using IntegrationService.Host.Listeners.Data;
+using IntegrationService.Host.Listeners.Data.Subscriptions;
 
 namespace IntegrationService.Host
 {
@@ -38,30 +38,24 @@ namespace IntegrationService.Host
             containerBuilder.RegisterType<SchemaRepository>();
             containerBuilder.RegisterType<DataRepository>();
             containerBuilder.RegisterType<DBSchemaService>();
+            containerBuilder.RegisterType<SubscriptionCatalog>().SingleInstance();
 
             containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<RawMessage, FlatMessage>>().SingleInstance();
             containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<IEnumerable<RawMessage>, FlatMessage>>().SingleInstance();
-            containerBuilder.RegisterType<DataFlow<RawMessage, FlatMessage>>().As<IDataFlow<RawMessage>>();
-            containerBuilder.RegisterType<DataFlow<IEnumerable<RawMessage>, FlatMessage>>().As<IDataFlow<IEnumerable<RawMessage>>>();
 
-            containerBuilder.RegisterType<RowByRowWriter>().As<IWriter<FlatMessage>>();
-            containerBuilder.RegisterType<BulkWriter>().As<IWriter<FlatMessage>>();
+            containerBuilder.RegisterType<RowByRowWriter>();
+            containerBuilder.RegisterType<BulkWriter>();
+
+            containerBuilder.RegisterType<DataFlow<RawMessage, FlatMessage, RowByRowWriter>>().As<IDataFlow<RawMessage>>();
+            containerBuilder.RegisterType<DataFlow<IEnumerable<RawMessage>, FlatMessage, BulkWriter>>().As<IDataFlow<IEnumerable<RawMessage>>>();
+
 
             using (var container = containerBuilder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
-            using (var metadataListenerHost = new MetadataListenerHost(rootScope))
-            using (var dataListenerHost = new DataListenerHost(rootScope))
+            using (var dataListenerHost = new ListenerHost(rootScope))
             {
-                metadataListenerHost.OnDeactivatedSchema += (s, e) => dataListenerHost.UnbindAll(e.EntityName);
-
-                metadataListenerHost.OnBulkActivatedSchema += 
-                    (s, e) => dataListenerHost.Bind(DataMode.Bulk, e.EntityName, e.Queue, e.Schema, e.Destination);
-
-                metadataListenerHost.OnRowByRowActivatedSchema += 
-                    (s, e) => dataListenerHost.Bind(DataMode.RowByRow, e.EntityName, e.Queue, e.Schema, e.Destination);
-
-                metadataListenerHost.RecoverKnownSchemas();
-                metadataListenerHost.StartAcceptingExternalSchemas();
+                dataListenerHost.RecoverKnownSchemas();
+                dataListenerHost.StartAcceptingExternalSchemas();
 
                 Console.WriteLine("All Run");
                 Process.GetCurrentProcess().WaitForExit();

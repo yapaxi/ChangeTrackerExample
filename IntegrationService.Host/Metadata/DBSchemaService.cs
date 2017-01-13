@@ -20,56 +20,86 @@ namespace IntegrationService.Host.Metadata
             _repository = repository;
         }
 
-        public SchemaActivationResult ActivateSchema(string name, string queueName, MappingSchema schema)
-        {
-            try
-            {
-                using (var tran = _repository.BeginTransaction())
-                {
-                    var result = ActivateSchemaInternal(name, queueName, schema);
-                    tran.Commit();
-                    return result;
-                }
-            }
-            catch (Exception e)
-            {
-                return new SchemaActivationResult(name, e);
-            }
-        }
-
         public Mapping[] GetActiveMappings()
         {
             return _repository.Mappings.Where(e => e.IsActive).ToArray();
         }
 
-        private SchemaActivationResult ActivateSchemaInternal(string name, string queueName, MappingSchema schema)
+        public SchemaStatus GetSchemaStatus(string name, string queueName, MappingSchema schema)
+        {
+            try
+            {
+                var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
+                var existing = mappings.FirstOrDefault(e => e.Checksum == schema.Checksum);
+                return CheckSchemaInternal(name, schema, mappings, existing, failHard: false);
+            }
+            catch (Exception e)
+            {
+                return new SchemaStatus(name, e);
+            }
+        }
+
+        public IStagingTable UseSchema(string name, string queueName, MappingSchema schema)
+        {
+            using (var tran = _repository.BeginTransaction(System.Data.IsolationLevel.ReadCommitted))
+            {
+                var table = GetOrCreateTableForSchema(name, queueName, schema);
+                tran.Commit();
+                return table;
+            }
+        }
+
+        private IStagingTable GetOrCreateTableForSchema(string name, string queueName, MappingSchema schema)
         {
             var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
             var existing = mappings.FirstOrDefault(e => e.Checksum == schema.Checksum);
+            var result = CheckSchemaInternal(name, schema, mappings, existing, failHard: true);
 
+            if (result.FullRebuildRequired)
+            {
+                var table = CreateTables(name, schema.Properties);
+
+                DeactivateAll(mappings);
+
+                var mapping = new Mapping()
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    Name = name,
+                    QueueName = queueName
+                };
+
+                Activate(mapping, schema, table);
+
+                _repository.Add(mapping);
+                _repository.SaveChanges();
+
+                return table;
+            }
+            else if (result.IsActive)
+            {
+                return JsonConvert.DeserializeObject<StagingTable>(existing.StagingTables);
+            }
+            else if (!result.IsActive)
+            {
+                var table = CreateTables(name, schema.Properties);
+
+                DeactivateAll(mappings);
+
+                Activate(existing, schema, table);
+
+                _repository.SaveChanges();
+                
+                return table;
+            }
+
+            throw new InvalidOperationException("Unexpected result");
+        }
+
+        private static SchemaStatus CheckSchemaInternal(string name, MappingSchema schema, Mapping[] mappings, Mapping existing, bool failHard)
+        {
             if (existing != null)
             {
-                Console.WriteLine("Existing table found");
-                if (existing.IsActive)
-                {
-                    Console.WriteLine("Already active, nothing to do");
-                    var stagingTable = JsonConvert.DeserializeObject<StagingTable>(existing.StagingTables);
-                    return new SchemaActivationResult(name, stagingTable);
-                }
-                else
-                {
-                    Console.WriteLine("Reactivating");
-
-                    var stagingTable = CreateTables(name, schema.Properties);
-
-                    DeactivateAll(mappings);
-
-                    Activate(existing);
-
-                    _repository.SaveChanges();
-
-                    return new SchemaActivationResult(name, stagingTable, fullRebuildRequired: true);
-                }
+                return new SchemaStatus(name, false, existing.IsActive);
             }
             else
             {
@@ -78,31 +108,36 @@ namespace IntegrationService.Host.Metadata
                 if (schema.CreatedUTC < max)
                 {
                     var times = $"Request UTC: {schema.CreatedUTC:yyyyMMddHHmmss.fff} is less than Known UTC: {max:yyyyMMddHHmmss.fff}";
-                    throw new Exception($"Schema change is rejected, because it was issued before last known schema. {times}");
+                    var exception = new Exception($"Schema change is rejected, because it was issued before last known schema. {times}");
+                    if (failHard)
+                    {
+                        throw exception;
+                    }
+                    return new SchemaStatus(name, exception);
                 }
-
-                Console.WriteLine("Existing table not found");
-
-                var stagingTable = CreateTables(name, schema.Properties);
-
-                DeactivateAll(mappings);
-
-                _repository.Add(new Mapping()
+                else
                 {
-                    IsActive = true,
-                    Checksum = schema.Checksum,
-                    CreatedAt = DateTime.UtcNow,
-                    SchemaCreatedAt = schema.CreatedUTC,
-                    Name = name,
-                    QueueName = queueName,
-                    Schema = JsonConvert.SerializeObject(schema),
-                    StagingTables = JsonConvert.SerializeObject(stagingTable)
-                });
-
-                _repository.SaveChanges();
-
-                return new SchemaActivationResult(name, stagingTable, fullRebuildRequired: true);
+                    return new SchemaStatus(name, true, false);
+                }
             }
+        }
+
+        private void DeactivateAll(Mapping[] mappings)
+        {
+            foreach (var mapping in mappings)
+            {
+                mapping.DeactivatedAt = DateTime.UtcNow;
+                mapping.IsActive = false;
+            }
+        }
+
+        private void Activate(Mapping mapping, MappingSchema schema, IStagingTable table)
+        {
+            mapping.IsActive = true;
+            mapping.StagingTables = JsonConvert.SerializeObject(table);
+            mapping.Schema = JsonConvert.SerializeObject(schema);
+            mapping.Checksum = schema.Checksum;
+            mapping.SchemaCreatedAt = schema.CreatedUTC;
         }
 
         private StagingTable CreateTables(string name, MappingProperty[] newSchema)
@@ -172,8 +207,6 @@ namespace IntegrationService.Host.Metadata
                 return "float";
             }
 
-
-
             throw new InvalidOperationException($"Unexpected type: {type}");
         }
 
@@ -181,20 +214,6 @@ namespace IntegrationService.Host.Metadata
         {
             var t = Type.GetType(clrType);
             return t.IsClass || (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>));
-        }
-
-        private static void Activate(Mapping existing)
-        {
-            existing.IsActive = true;
-        }
-
-        private static void DeactivateAll(Mapping[] mappings)
-        {
-            foreach (var m in mappings)
-            {
-                m.DeactivatedAt = DateTime.UtcNow;
-                m.IsActive = false;
-            }
         }
     }
 }

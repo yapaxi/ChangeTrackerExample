@@ -56,7 +56,10 @@ namespace ChangeTrackerExample.App
             var configs = GetConfigurationOrFail(entityTypeFullName);
             foreach (var config in configs)
             {
-                var ranges = config.Entity.GetEntityRanges(_context, 1000);
+                var items = 10000;
+                var ranges = config.Entity.GetEntityRanges(_context, items);
+
+                Console.WriteLine($"Found {ranges.Length} ranges, {items} items each");
 
                 for (var i = 0; i < ranges.Length; i++)
                 {
@@ -75,6 +78,8 @@ namespace ChangeTrackerExample.App
                     properties.Headers[ISMessageHeader.BATCH_COUNT] = ranges.Length;
 
                     var bytes = GetEntityBytes(mappedEntities);
+
+                    Console.WriteLine($"Sending range {i}: {range.MinId} -> {range.MaxId}");
 
                     _bus.Advanced.Publish(config.DestinationExchange, "", false, properties, bytes);
 

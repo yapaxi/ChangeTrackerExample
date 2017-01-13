@@ -33,7 +33,7 @@ namespace ChangeTrackerExample
 
             var module = new RabbitAutofacModule(
                 busResolveScope: rootScope,
-                loopbackVHost: "ChangeTrackerExample"
+                loopbackVHost: "CTTestLoopback"
             );
 
             containerBuilder.RegisterModule(module);
@@ -63,7 +63,7 @@ namespace ChangeTrackerExample
                 }
                 
                 RunLoopbackListener(scope);
-           //     RunBlockingDebugGenerator(scope);
+                RunBlockingDebugGenerator(scope);
 
                 Process.GetCurrentProcess().WaitForExit();
             }
@@ -82,17 +82,16 @@ namespace ChangeTrackerExample
             {
                 var changeHandler = e.ResolveNamed<ChangeHandler>(Buses.BulkMessaging);
                 var sync = new ISSynchronizer(e.Resolve<ISClient>(), e.Resolve<IEnumerable<EntityConfig>>());
-                sync.OnSyncSucceeded += (s, o) => Console.WriteLine("Meta sync success");
-                sync.OnSyncFailed += (s, o) => Console.WriteLine("Meta sync failed");
-                sync.OnQueueFailed += (s, o) => Console.WriteLine("Meta sync queue failed");
-                sync.OnFullRebuildRequired += (s, o) => changeHandler.HandleEntityFullRebuild(o.SourceTypeClassName);
+                sync.OnFullRebuildRequired += (s, o) =>
+                {
+                    changeHandler.HandleEntityFullRebuild(o.SourceTypeClassName);
+                };
                 return sync;
             }).SingleInstance();
         }
 
         private static void RunBlockingDebugGenerator(ILifetimeScope outerScope)
         {
-            const int CNT_PER_BATCH = 1;
             Console.WriteLine("RunDebugGenerator done");
 
             var notifier = outerScope.Resolve<LoopbackNotifier>();
@@ -124,7 +123,7 @@ namespace ChangeTrackerExample
                     context.SaveChanges();
                     Console.WriteLine($"Generated: {entity.Id}");
 
-                    //Thread.Sleep(1000);
+                    Thread.Sleep(1000);
                     notifier.NotifyChanged<SomeEntity>(entity.Id);
                 }
 

@@ -78,6 +78,7 @@
     <Compile Include="App\Events\ISSyncFailedEventArgs.cs" />
     <Compile Include="App\LoopbackListener.cs" />
     <Compile Include="App\LoopbackNotifier.cs" />
+    <Compile Include="App\MetadataSyncResult.cs" />
     <Compile Include="Configuration\ChangeTrackerBuilder.cs" />
     <Compile Include="Configuration\ConfigurationExtentions.cs" />
     <Compile Include="Configuration\ContextEntity.cs" />

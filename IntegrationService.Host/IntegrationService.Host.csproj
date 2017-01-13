@@ -86,15 +86,14 @@
     <Compile Include="DAL\SchemaRepository.cs" />
     <Compile Include="DAL\WriteDestination.cs" />
     <Compile Include="Domain\Mapping.cs" />
-    <Compile Include="Listeners\Data\DataListenerHost.cs" />
     <Compile Include="Converters\FlatMessageConverter.cs" />
     <Compile Include="Listeners\Data\MessageReceivedEventArgs.cs" />
     <Compile Include="Listeners\Data\RawMessage.cs" />
     <Compile Include="Listeners\Data\Subscriptions\BulkSubscription.cs" />
     <Compile Include="Listeners\Data\Subscriptions\StreamingSubscription.cs" />
+    <Compile Include="Listeners\Data\Subscriptions\SubscriptionCatalog.cs" />
     <Compile Include="Listeners\ListenerBase.cs" />
-    <Compile Include="Listeners\Metadata\ActivatedSchemaEventArgs.cs" />
-    <Compile Include="Listeners\Metadata\MetadataListenerHost.cs" />
+    <Compile Include="Listeners\ListenerHost.cs" />
     <Compile Include="Metadata\DBSchemaService.cs" />
     <Compile Include="DAL\StagingTable.cs" />
     <Compile Include="Metadata\SchemaActivationResult.cs" />

@@ -17,5 +17,10 @@ namespace IntegrationService.Host.DAL.Contexts
         }
 
         public DbSet<Mapping> Mappings { get; set; }
+
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+        }
     }
 }

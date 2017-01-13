@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IntegrationService.Host.Listeners.Data
+namespace IntegrationService.Host.Listeners.Data.Subscriptions
 {
 
     internal class StreamingSubscription : IDisposable

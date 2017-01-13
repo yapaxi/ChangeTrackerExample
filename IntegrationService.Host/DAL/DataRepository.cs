@@ -24,10 +24,18 @@ namespace IntegrationService.Host.DAL
         public void Merge(string tableName, IReadOnlyDictionary<string, object> keyValues)
         {
             var columns = string.Join(",", keyValues.Select(e => e.Key).ToArray());
-            var prs = string.Join(",", keyValues.Select(e => "@" + e.Key).ToArray());
+            var parameters = string.Join(",", keyValues.Select(e => "@" + e.Key).ToArray());
+            var update = string.Join(",", keyValues.Where(e => !e.Key.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                                                   .Select(e => $"[target].[{e.Key}] = @{e.Key}").ToArray());
 
             Context.Database.ExecuteSqlCommand(
-                $"insert into {tableName} ({columns}) values ({prs})",
+                $@"merge {tableName} as [target]
+                   using (select @id as id) as [source]
+                   on [target].[id] = [source].[id]
+                   when not matched then insert ({columns})
+                                         values ({parameters})
+                   when matched then update 
+                                     set {update};",
                 keyValues.Select(e => new SqlParameter(e.Key, e.Value)).ToArray());
         }
 
@@ -40,7 +48,10 @@ namespace IntegrationService.Host.DAL
                 dataTable.Columns.Add(column.Name, column.UnwrappedType);
             }
 
-            using (var bulk = new SqlBulkCopy(Context.Database.Connection.ConnectionString))
+            using (var bulk = new SqlBulkCopy(
+                Context.Database.Connection.ConnectionString,
+                SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.UseInternalTransaction | SqlBulkCopyOptions.CheckConstraints
+            ))
             {
                 bulk.DestinationTableName = table.FullName;
                 foreach (var kv in keyValues)

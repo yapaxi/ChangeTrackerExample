@@ -29,12 +29,9 @@ namespace ChangeTrackerExample.App
             _client = client;
             _configurations = configurations.ToArray();
             _cmplSrc = new TaskCompletionSource<object>();
-            _timer = new Timer(SyncMetadata, null, Timeout.Infinite, Timeout.Infinite);
+            _timer = new Timer(HeartbitRoutine, null, Timeout.Infinite, Timeout.Infinite);
         }
-
-        public event EventHandler<QueueFailedEventArgs> OnQueueFailed;
-        public event EventHandler<ISSyncFailedEventArgs> OnSyncFailed;
-        public event EventHandler<EventArgs> OnSyncSucceeded;
+        
         public event EventHandler<FullRebuildRequiredEventArgs> OnFullRebuildRequired;
 
         public void Start()
@@ -45,7 +42,7 @@ namespace ChangeTrackerExample.App
             }
         }
 
-        private void SyncMetadata(object state)
+        private void HeartbitRoutine(object state)
         {
             try
             {
@@ -54,24 +51,20 @@ namespace ChangeTrackerExample.App
                     return;
                 }
 
+                WriteWithColor("Heartbit", ConsoleColor.Green);
+
                 _tryCount++;
-                SyncMetadataInternal();
-            }
-            catch (AggregateException e) when (e.InnerExceptions.All(q => q is TimeoutException))
-            {
-                OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e.InnerException, TryCount = _tryCount });
-            }
-            catch (EasyNetQException e)
-            {
-                OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });
-            }
-            catch (TimeoutException e)
-            {
-                OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });
+
+                var request = new SyncMetadataRequest()
+                {
+                    Items = ConvertConfigurationToRequestItems(_configurations)
+                };
+
+                Sync(request);
             }
             catch (Exception e)
             {
-                OnQueueFailed?.Invoke(this, new QueueFailedEventArgs() { Exception = e, TryCount = _tryCount });
+                WriteWithColor(e.ToString(), ConsoleColor.Red);
             }
             finally
             {
@@ -79,61 +72,84 @@ namespace ChangeTrackerExample.App
             }
         }
 
-        private void SyncMetadataInternal()
+        private static void WriteWithColor(string message, ConsoleColor color)
         {
-            var request = FormatRequest();
+            var prevColor = Console.ForegroundColor;
+            Console.ForegroundColor = color;
+            Console.WriteLine(message);
+            Console.ForegroundColor = prevColor;
+        }
 
-            Console.WriteLine("Sending sync request...");
-            var response = _client.SyncMetadata(request);
-            Console.WriteLine("Sync request sent");
-
-            var result = (
-                from rq in request.Items
-                join rs in response.Items on rq.Name equals rs.Name
-                select new { Request = rq, Response = rs }
-            ).ToArray();
-
-            var allSucceeded = result.All(e => e.Response.Result == SyncMetadataResult.Success);
-            
-            if (allSucceeded)
+        private void Sync(SyncMetadataRequest request)
+        {
+            MetadataSyncResult result;
+            if (!TrySyncMetadata(request, out result))
             {
-                lock (_lock)
-                {
-                    _timer.Change(Timeout.Infinite, Timeout.Infinite);
-                }
-                OnSyncSucceeded?.Invoke(this, EventArgs.Empty);
-                foreach (var frb in result.Where(e => e.Response.FullRebuildRequired))
-                {
-                    OnFullRebuildRequired?.Invoke(this, new FullRebuildRequiredEventArgs(frb.Request.SourceTypeFullName));
-                }
+                Console.WriteLine($"Sync failed with unexpected error");
+                return;
+            }
+
+            if (!result.NoFailedSyncs)
+            {
+                Console.WriteLine($"Sync failed: one or more sync items are failed");
+                Console.WriteLine(result);
+                return;
+            }
+            
+            if (!result.FullRebuildRequired && !result.FullRebuildInProgress)
+            {
+                DisableHeartbitWithSuccess();
             }
             else
             {
-                OnSyncFailed?.Invoke(this, new ISSyncFailedEventArgs()
+                foreach (var frb in result.FullRebuildInProgressItems)
                 {
-                    TryCount = _tryCount,
-                    TotalEntities = result.Length,
-                    Messages = result.Select(e => e.Response.Message).ToArray(),
-                    SucceededEntities = result.Count(e => e.Response.Result == SyncMetadataResult.Success),
-                    FailedByBusinessReasons = result.Count(e => e.Response.Result == SyncMetadataResult.BusinessConstraintViolation),
-                    FailedByTemporaryReasons = result.Count(e => e.Response.Result == SyncMetadataResult.TemporaryError),
-                    FailedByUnexpectedReasons = result.Count(e => e.Response.Result == SyncMetadataResult.UnhandledError),
-                });
+                    WriteWithColor($"Full rebuild in progress for {frb.Request.SourceTypeFullName}", ConsoleColor.Yellow);
+                }
+
+                foreach (var frb in result.FullRebuildRequiredItems)
+                {
+                    Console.WriteLine($"Request full rebuild for {frb.Request.SourceTypeFullName}");
+                    OnFullRebuildRequired?.Invoke(this, new FullRebuildRequiredEventArgs(frb.Request.SourceTypeFullName));
+                }
             }
         }
 
-        private SyncMetadataRequest FormatRequest()
+        private bool TrySyncMetadata(SyncMetadataRequest request, out MetadataSyncResult result)
         {
-            return new SyncMetadataRequest()
+            try
             {
-                Items = _configurations.Select(e => new SyncMetadataRequestItem()
-                {
-                    Schema = e.Entity.MappingSchema,
-                    SourceTypeFullName = e.Entity.SourceType.FullName,
-                    Name = e.FullName,
-                    QueueName = e.DestinationQueue.Name
-                }).ToArray()
-            };
+                var response = _client.SyncMetadata(request);
+                result = new MetadataSyncResult(request, response, _tryCount);
+                return true;
+            }
+            catch (Exception e)
+            {
+                WriteWithColor(e.Message, ConsoleColor.Red);
+                result = null;
+                return false;
+            }
+        }
+        
+        private void DisableHeartbitWithSuccess()
+        {
+            Console.WriteLine("Heartbit disabled: sync succeeded");
+
+            lock (_lock)
+            {
+                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+        }
+        
+        private SyncMetadataRequestItem[] ConvertConfigurationToRequestItems(EntityConfig[] confiurations)
+        {
+            return _configurations.Select(e => new SyncMetadataRequestItem()
+            {
+                Schema = e.Entity.MappingSchema,
+                SourceTypeFullName = e.Entity.SourceType.FullName,
+                EntityName = e.FullName,
+                QueueName = e.DestinationQueue.Name
+            }).ToArray();
         }
 
         public void Dispose()

@@ -10,14 +10,15 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.Writers
 {
-    public class DataFlow<TSource, TResult> : IDataFlow<TSource>
+    public class DataFlow<TSource, TResult, TWriter> : IDataFlow<TSource>
+        where TWriter : IWriter<TResult>
     {
         private readonly IConverter<TSource, TResult> _converter;
         private readonly WriteDestination _destination;
         private readonly RuntimeMappingSchema _schema;
-        private readonly IWriter<TResult> _writer;
+        private readonly TWriter _writer;
 
-        public DataFlow(IConverter<TSource, TResult> converter, IWriter<TResult> writer, RuntimeMappingSchema schema, WriteDestination destination)
+        public DataFlow(IConverter<TSource, TResult> converter, TWriter writer, RuntimeMappingSchema schema, WriteDestination destination)
         {
             _converter = converter;
             _writer = writer;

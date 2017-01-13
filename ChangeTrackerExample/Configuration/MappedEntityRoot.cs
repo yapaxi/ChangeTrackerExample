@@ -69,12 +69,14 @@ namespace ChangeTrackerExample.Configuration
 
         public EntityRange[] GetEntityRanges(IEntityContext context, int rangeLength)
         {
-            return context.ReadonlyGet<TSource>()
-                .GroupBy(e => e.Id % rangeLength)
-                .Select(e => new { Key = e.Key, Min = e.Min(q => q.Id), Max = e.Max(q => q.Id) })
-                .OrderBy(e => e.Key)
-                .ToArray()
-                .Select(e => new EntityRange() { MinId = e.Min, MaxId = e.Max }).ToArray();
+            return (
+                from q in context.ReadonlyGet<TSource>()
+                group q by q.Id / rangeLength into grp
+                select new { Key = grp.Key, Min = grp.Min(q => q.Id), Max = grp.Max(q => q.Id) }
+            )
+            .ToArray()
+            .Select(e => new EntityRange() { MinId = e.Min, MaxId = e.Max })
+            .ToArray();
         }
 
         private long GetMD5(string str)

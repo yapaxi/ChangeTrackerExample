@@ -14,7 +14,7 @@ namespace IntegrationService.Contracts.v3
 
     public class SyncMetadataRequestItem
     {
-        public string Name { get; set; }
+        public string EntityName { get; set; }
         public MappingSchema Schema { get; set; }
         public string QueueName { get; set; }
         public string SourceTypeFullName { get; set; }

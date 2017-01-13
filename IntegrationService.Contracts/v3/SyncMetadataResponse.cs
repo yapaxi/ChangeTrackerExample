@@ -16,6 +16,7 @@ namespace IntegrationService.Contracts.v3
         public string Name { get; set; }
         public SyncMetadataResult Result { get; set; }
         public bool FullRebuildRequired { get; set; }
+        public bool FullRebuildInProgress { get; set; }
         public string Message { get; set; }
     }
 

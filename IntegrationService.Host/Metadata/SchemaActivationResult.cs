@@ -7,26 +7,41 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.Metadata
 {
-    public class SchemaActivationResult
+    public class SchemaStatus
     {
-        public SchemaActivationResult(string name, IStagingTable table, bool fullRebuildRequired = false)
+        public SchemaStatus(string name, bool fullRebuildRequired, bool isActive)
         {
             this.Name = name;
-            this.StagingTable = table;
+            this.IsActive = isActive;
             this.FullRebuildRequired = fullRebuildRequired;
         }
 
-        public SchemaActivationResult(string name, Exception exception)
+        public SchemaStatus(string name, Exception exception)
         {
             this.Name = name;
             this.Exception = exception;
         }
 
         public string Name { get; }
+
         public bool FullRebuildRequired { get; }
-        public Exception Exception { get;  }
-        public IStagingTable StagingTable { get; }
+
+        public bool IsActive { get; }
+
+        public Exception Exception { get; }
 
         public bool IsFailed => Exception != null;
+    }
+
+    public class SchemaActivationResult
+    {
+        public SchemaActivationResult(string name, IStagingTable table)
+        {
+            this.StagingTable = table;
+        }
+
+        public string Name { get; }
+
+        public IStagingTable StagingTable { get; }
     }
 }
