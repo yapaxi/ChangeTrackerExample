@@ -87,24 +87,22 @@
     <Compile Include="DAL\WriteDestination.cs" />
     <Compile Include="Domain\Mapping.cs" />
     <Compile Include="Converters\FlatMessageConverter.cs" />
-    <Compile Include="Listeners\Data\MessageReceivedEventArgs.cs" />
-    <Compile Include="Listeners\Data\RawMessage.cs" />
-    <Compile Include="Listeners\Data\Subscriptions\BulkSubscription.cs" />
-    <Compile Include="Listeners\Data\Subscriptions\StreamingSubscription.cs" />
-    <Compile Include="Listeners\Data\Subscriptions\SubscriptionCatalog.cs" />
-    <Compile Include="Listeners\ListenerBase.cs" />
-    <Compile Include="Listeners\ListenerHost.cs" />
-    <Compile Include="Metadata\DBSchemaService.cs" />
+    <Compile Include="Services\IRequestResponseService.cs" />
+    <Compile Include="Subscriptions\MessageInfo.cs" />
+    <Compile Include="Subscriptions\RawMessage.cs" />
+    <Compile Include="Subscriptions\BulkSubscription.cs" />
+    <Compile Include="Subscriptions\StreamingSubscription.cs" />
+    <Compile Include="Subscriptions\SubscriptionManager.cs" />
+    <Compile Include="Middleware\IRequestLifetimeHandler.cs" />
+    <Compile Include="Middleware\RequestLifetimeHandler.cs" />
+    <Compile Include="Services\SchemaPersistenceService.cs" />
     <Compile Include="DAL\StagingTable.cs" />
-    <Compile Include="Metadata\SchemaActivationResult.cs" />
+    <Compile Include="Services\MetadataSyncService.cs" />
+    <Compile Include="Services\SchemaActivationResult.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DAL\Contexts\SchemaContext.cs" />
-    <Compile Include="Writers\IDataFlow.cs" />
-    <Compile Include="Writers\IWriter.cs" />
-    <Compile Include="Writers\BulkWriter.cs" />
-    <Compile Include="Writers\RowByRowWriter.cs" />
-    <Compile Include="Writers\DataFlow.cs" />
+    <Compile Include="Services\MessagingService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

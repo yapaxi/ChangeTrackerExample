@@ -8,7 +8,7 @@ using RabbitModel;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.IO;
-using IntegrationService.Host.Listeners.Data;
+using IntegrationService.Host.Subscriptions;
 
 namespace IntegrationService.Host.Converters
 {

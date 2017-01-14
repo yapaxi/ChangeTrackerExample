@@ -8,34 +8,38 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IntegrationService.Host.Listeners.Data.Subscriptions
+namespace IntegrationService.Host.Subscriptions
 {
 
     internal class StreamingSubscription : IDisposable
     {
         private readonly object _lock;
         private readonly IDisposable _subscription;
+        private readonly Action<RawMessage> _onMessage;
 
         private bool _disposed;
 
-        public StreamingSubscription(IAdvancedBus bus, Queue queue, Action<RawMessage> onMessage)
+        public StreamingSubscription(IAdvancedBus bus, string queue, Action<RawMessage> onMessage)
         {
+            _onMessage = onMessage;
             _lock = new object();
             _subscription = bus.Consume(
-                queue,
-                (data, properties, info) =>
-                {
-                    lock (_lock)
-                    {
-                        if (_disposed)
-                        {
-                            return;
-                        }
-                    }
-
-                    onMessage(new RawMessage(data, (int)properties.Headers[ISMessageHeader.ENTITY_COUNT]));
-                }
+                new Queue(queue, false),
+                (data, properties, info) => HandleMessage(data, properties)
             );
+        }
+
+        private void HandleMessage(byte[] data, MessageProperties properties)
+        {
+            lock (_lock)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+            }
+
+            _onMessage(new RawMessage(data, (int)properties.Headers[ISMessageHeader.ENTITY_COUNT]));
         }
 
         public void Dispose()

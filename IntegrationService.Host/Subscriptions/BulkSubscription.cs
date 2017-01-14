@@ -9,24 +9,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 
-namespace IntegrationService.Host.Listeners.Data.Subscriptions
+namespace IntegrationService.Host.Subscriptions
 {
     internal class BufferingSubscription : IDisposable
     {
-        private class RawMessageWithProgress : RawMessage
-        {
-            public RawMessageWithProgress(byte[] body, int entityCount, bool isLast, int rangeId) 
-                : base(body, entityCount)
-            {
-                IsLast = isLast;
-                RangeId = rangeId;
-            }
-
-            public bool IsLast { get;  }
-
-            public int RangeId { get; }
-        }
-
+        private readonly int _bufferSize;
         private readonly object _lock;
         private readonly IDisposable _subscription;
         private readonly Action<IReadOnlyCollection<RawMessage>> _onMessage;
@@ -36,27 +23,30 @@ namespace IntegrationService.Host.Listeners.Data.Subscriptions
 
         public BufferingSubscription(
             IAdvancedBus bus,
-            Queue queue,
+            string queue,
             Action<IEnumerable<RawMessage>> onMessage,
-            Action onComplete)
+            Action onComplete,
+            int bufferSize)
         {
+            _bufferSize = bufferSize;
             _onComplete = onComplete;
             _onMessage = onMessage;
             _lock = new object();
 
-            var messages = new List<RawMessageWithProgress>();
+            var messages = new List<RawMessage>(_bufferSize);
 
             _subscription = bus.Consume(
-                queue,
+                new Queue(queue, false),
                 (data, properties, info) => HandleMessage(data, properties, messages)
             );
         }
 
-        private void HandleMessage(byte[] data, MessageProperties properties, List<RawMessageWithProgress> buffer)
+        private void HandleMessage(byte[] data, MessageProperties properties, List<RawMessage> buffer)
         {
             try
             {
                 bool lastReceived;
+
                 lock (_lock)
                 {
                     if (_disposed)
@@ -64,16 +54,13 @@ namespace IntegrationService.Host.Listeners.Data.Subscriptions
                         return;
                     }
 
-                    var rawMessage = new RawMessageWithProgress(
-                        data,
-                        (int)properties.Headers[ISMessageHeader.ENTITY_COUNT],
-                        (bool)properties.Headers[ISMessageHeader.BATCH_IS_LAST],
-                        (int)properties.Headers[ISMessageHeader.BATCH_ORDINAL]
-                    );
+                    var rawMessage = new RawMessage(data, (int)properties.Headers[ISMessageHeader.ENTITY_COUNT]);
 
-                    lastReceived = rawMessage.IsLast;
+                    lastReceived = (bool)properties.Headers[ISMessageHeader.BATCH_IS_LAST];
 
-                    Console.WriteLine($"[{nameof(BufferingSubscription)}] Accepted range: rangeId={rawMessage.RangeId},isLast={rawMessage.IsLast}");
+                    var rangeId = (int)properties.Headers[ISMessageHeader.BATCH_ORDINAL];
+
+                    Console.WriteLine($"[{nameof(BufferingSubscription)}] Accepted range: rangeId={rangeId},isLast={lastReceived}");
 
                     buffer.Add(rawMessage);
 

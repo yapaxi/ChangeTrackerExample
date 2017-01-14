@@ -10,17 +10,16 @@ using System.Text;
 using System.Threading.Tasks;
 using EasyNetQ.Topology;
 using System.Diagnostics;
-using IntegrationService.Contracts.v3;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.DAL.Contexts;
 using IntegrationService.Host.Metadata;
-using IntegrationService.Host.Listeners;
 using IntegrationService.Host.Converters;
-using IntegrationService.Host.Writers;
 using Autofac.Core;
 using Common;
-using IntegrationService.Host.Listeners.Data;
-using IntegrationService.Host.Listeners.Data.Subscriptions;
+using Newtonsoft.Json;
+using IntegrationService.Host.Middleware;
+using IntegrationService.Host.Subscriptions;
+using IntegrationService.Host.Services;
 
 namespace IntegrationService.Host
 {
@@ -35,29 +34,58 @@ namespace IntegrationService.Host
 
             containerBuilder.Register(e => new SchemaContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
             containerBuilder.Register(e => new DataContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
-            containerBuilder.RegisterType<SchemaRepository>();
-            containerBuilder.RegisterType<DataRepository>();
-            containerBuilder.RegisterType<DBSchemaService>();
-            containerBuilder.RegisterType<SubscriptionCatalog>().SingleInstance();
 
-            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<RawMessage, FlatMessage>>().SingleInstance();
-            containerBuilder.RegisterType<FlatMessageConverter>().As<IConverter<IEnumerable<RawMessage>, FlatMessage>>().SingleInstance();
+            containerBuilder.RegisterType<SchemaRepository>().InstancePerLifetimeScope();
+            containerBuilder.RegisterType<DataRepository>().InstancePerLifetimeScope();
+            containerBuilder.RegisterType<SchemaPersistenceService>().InstancePerLifetimeScope();
 
-            containerBuilder.RegisterType<RowByRowWriter>();
-            containerBuilder.RegisterType<BulkWriter>();
+            containerBuilder.RegisterType<RequestLifetimeHandler>().As<IRequestLifetimeHandler>().SingleInstance();
 
-            containerBuilder.RegisterType<DataFlow<RawMessage, FlatMessage, RowByRowWriter>>().As<IDataFlow<RawMessage>>();
-            containerBuilder.RegisterType<DataFlow<IEnumerable<RawMessage>, FlatMessage, BulkWriter>>().As<IDataFlow<IEnumerable<RawMessage>>>();
+            containerBuilder.Register(e => new SubscriptionManager(
+                handler: e.Resolve<IRequestLifetimeHandler>(),
+                isBus: e.ResolveNamed<IBus>(Buses.ISSync),
+                simpleBus: e.ResolveNamed<IBus>(Buses.SimpleMessaging), 
+                bulkBus: e.ResolveNamed<IBus>(Buses.BulkMessaging)
+            )).SingleInstance();
 
+            containerBuilder.RegisterType<FlatMessageConverter>().SingleInstance();
+            
+            containerBuilder.RegisterType<MessagingService>()
+                .As<IMessagingService<RawMessage>>()
+                .InstancePerLifetimeScope();
+
+            containerBuilder.RegisterType<MessagingService>()
+                .As<IMessagingService<IEnumerable<RawMessage>>>()
+                .InstancePerLifetimeScope();
 
             using (var container = containerBuilder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
-            using (var dataListenerHost = new ListenerHost(rootScope))
             {
-                dataListenerHost.RecoverKnownSchemas();
-                dataListenerHost.StartAcceptingExternalSchemas();
+                var dbSchemaService = rootScope.Resolve<SchemaPersistenceService>();
+                var subscriptionManager = rootScope.Resolve<SubscriptionManager>();
+
+                foreach (var mapping in dbSchemaService.GetActiveMappings())
+                {
+                    try
+                    {
+                        subscriptionManager.SubscribeOnDataFlow(
+                            DataMode.RowByRow,
+                            mapping.QueueName,
+                            mapping.Name,
+                            new RuntimeMappingSchema(JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema)),
+                            new WriteDestination(JsonConvert.DeserializeObject<StagingTable>(mapping.StagingTables)));
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
+                }
+
+                subscriptionManager.SubscribeOnMetadataSync();
 
                 Console.WriteLine("All Run");
+
                 Process.GetCurrentProcess().WaitForExit();
             }
         }

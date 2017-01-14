@@ -11,11 +11,11 @@ using IntegrationService.Host.DAL.DDL;
 
 namespace IntegrationService.Host.Metadata
 {
-    public class DBSchemaService
+    public class SchemaPersistenceService
     {
         private readonly SchemaRepository _repository;
 
-        public DBSchemaService(SchemaRepository repository)
+        public SchemaPersistenceService(SchemaRepository repository)
         {
             _repository = repository;
         }
