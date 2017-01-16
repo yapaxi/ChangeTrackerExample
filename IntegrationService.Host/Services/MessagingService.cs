@@ -7,6 +7,7 @@ using IntegrationService.Host.Subscriptions;
 using RabbitModel;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,7 +21,7 @@ namespace IntegrationService.Host.Services
 
     public class MessagingService : 
         IMessagingService<RawMessage>,
-        IMessagingService<IEnumerable<RawMessage>>
+        IMessagingService<IReadOnlyCollection<RawMessage>>
     {
         private readonly DataRepository _repository;
         private readonly FlatMessageConverter _converter;
@@ -48,31 +49,44 @@ namespace IntegrationService.Host.Services
         {
             var messages = _converter.Convert(rawMessage, info.Schema);
 
-            foreach (var message in messages)
+            foreach (var message in messages.Payload)
             {
-                foreach (var messageElement in message.Payload)
+                var table = info.Destination.FlattenTables[message.Key];
+                Console.Write(table.SystemName + "... ");
+                foreach (var line in message.Value)
                 {
-                    var table = info.Destination.FlattenTables[messageElement.Key];
-                    Console.Write(table.SystemName + "... ");
-                    foreach (var line in messageElement.Value)
-                    {
-                        _repository.Merge(table.FullName, line);
-                    }
+                    _repository.Merge(table.FullName, line);
                 }
             }
         }
 
-        public void WriteMessage(IEnumerable<RawMessage> rawMessage, MessageInfo info)
+        public void WriteMessage(IReadOnlyCollection<RawMessage> rawMessage, MessageInfo info)
         {
+            var sw = new Stopwatch();
+            sw.Start();
             var converter = new FlatMessageConverter();
-
             var roots = converter.Convert(rawMessage, info.Schema);
+            WriteElapsed(sw);
+            GroupedWrite(info, roots);
+            WriteElapsed(sw);
+            sw.Stop();
+        }
 
-            foreach (var k in roots.SelectMany(e => e.Payload).GroupBy(e => e.Key))
+        private static void WriteElapsed(Stopwatch sw)
+        {
+            var c = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine(sw.Elapsed);
+            Console.ForegroundColor = c;
+            sw.Restart();
+        }
+
+        private void GroupedWrite(MessageInfo info, FlatMessage roots)
+        {
+            foreach (var k in roots.Payload)
             {
-                var agg = k.Select(e => e.Value).Aggregate(new List<Dictionary<string, object>>(), (a, b) => { a.AddRange(b); return a; });
                 var table = info.Destination.FlattenTables[k.Key];
-                _repository.BulkInsert(table, agg);
+                _repository.BulkInsert(table, k.Value);
             }
         }
     }

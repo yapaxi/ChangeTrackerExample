@@ -12,30 +12,29 @@ using IntegrationService.Host.Subscriptions;
 
 namespace IntegrationService.Host.Converters
 {
-    public class FlatMessageConverter : 
-        IConverter<IEnumerable<RawMessage>, FlatMessage>,
+    public class FlatMessageConverter :
+        IConverter<IReadOnlyCollection<RawMessage>, FlatMessage>,
         IConverter<RawMessage, FlatMessage>
     {
-        public IEnumerable<FlatMessage> Convert(RawMessage data, RuntimeMappingSchema runtimeSchema)
+        public FlatMessage Convert(RawMessage data, RuntimeMappingSchema runtimeSchema)
         {
-            return Convert(Encoding.Unicode.GetString(data.Body), runtimeSchema).ToArray();
+            var properties = CreateBlankProperties(runtimeSchema, data.EntityCount);
+            ConvertJTR(Encoding.Unicode.GetString(data.Body), runtimeSchema, properties);
+            return new FlatMessage(properties);
         }
 
-        public IEnumerable<FlatMessage> Convert(IEnumerable<RawMessage> data, RuntimeMappingSchema runtimeSchema)
+        public FlatMessage Convert(IReadOnlyCollection<RawMessage> data, RuntimeMappingSchema runtimeSchema)
         {
+            var properties = CreateBlankProperties(runtimeSchema, data.Sum(e => e.EntityCount));
             foreach (var messageGroup in data)
             {
-                foreach (var flatMessage in Convert(messageGroup, runtimeSchema))
-                {
-                    yield return flatMessage;
-                }
+                ConvertJTR(Encoding.Unicode.GetString(messageGroup.Body), runtimeSchema, properties);
             }
+            return new FlatMessage(properties);
         }
 
-        private IEnumerable<FlatMessage> Convert(string json, RuntimeMappingSchema runtimeSchema)
+        private void ConvertJTR(string json, RuntimeMappingSchema runtimeSchema, Dictionary<string, List<Dictionary<string, object>>> properties)
         {
-            var properties = CreateBlankProperties(runtimeSchema);
-
             using (var r = new JsonTextReader(new StringReader(json)))
             {
                 string currentProperty = null;
@@ -94,8 +93,6 @@ namespace IntegrationService.Host.Converters
                             pathStack.Pop();
                             if (r.Depth == 1)
                             {
-                                yield return new FlatMessage(properties);
-                                properties = CreateBlankProperties(runtimeSchema);
                                 pathStack.Clear();
                                 lineStack.Clear();
                                 currentProperty = null;
@@ -114,9 +111,9 @@ namespace IntegrationService.Host.Converters
             }
         }
 
-        private static Dictionary<string, List<Dictionary<string, object>>> CreateBlankProperties(RuntimeMappingSchema runtimeSchema)
+        private static Dictionary<string, List<Dictionary<string, object>>> CreateBlankProperties(RuntimeMappingSchema runtimeSchema, int estimatedEntitiesCount)
         {
-            return runtimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>());
+            return runtimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>(estimatedEntitiesCount));
         }
 
         private static string ClearPath(string path)
@@ -146,5 +143,88 @@ namespace IntegrationService.Host.Converters
 
             return builder.ToString().TrimStart('.');
         }
+
+        #region SLOW PARSER VERSION 
+
+        private void ConvertJO(string json, RuntimeMappingSchema runtimeSchema, Dictionary<string, List<Dictionary<string, object>>> buffer)
+        {
+            EnterArray(JArray.Parse(json), runtimeSchema, buffer);
+        }
+
+        private static void EnterArray(JToken ja, RuntimeMappingSchema runtimeSchema, Dictionary<string, List<Dictionary<string, object>>> buffer)
+        {
+            foreach (JToken jae in ja)
+            {
+                switch (jae.Type)
+                {
+                    case JTokenType.Object:
+                        EnterObject(jae, runtimeSchema, buffer);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Only array of objects is supported: {ClearPath(ja.Path)}");
+                }
+            }
+        }
+
+        private static void EnterObject(JToken jae, RuntimeMappingSchema runtimeSchema, Dictionary<string, List<Dictionary<string, object>>> buffer)
+        {
+            var path = ClearPath(jae.Path);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                path = MappingSchema.RootName;
+            }
+            var simpleData = new Dictionary<string, object>();
+            buffer[path].Add(simpleData);
+            foreach (JProperty jo in jae.Children())
+            {
+                switch (jo.Value.Type)
+                {
+                    case JTokenType.Object:
+                        EnterObject(jo.Value, runtimeSchema, buffer);
+                        break;
+                    case JTokenType.Array:
+                        EnterArray(jo.Value, runtimeSchema, buffer);
+                        break;
+                    case JTokenType.Null:
+                        break;
+                    default:
+                        var valuePath = ClearPath(jo.Value.Path);
+                        MappingProperty mapping;
+                        if (runtimeSchema.FlatProperties.TryGetValue(valuePath, out mapping))
+                        {
+                            simpleData.Add(jo.Name, ConvertValue(valuePath, (JValue)jo.Value, runtimeSchema.TypeCache[mapping.ClrType]));
+                        }
+                        break;
+                }
+            }
+        }
+
+        private static object ConvertValue(string path, JValue value, Type clrType)
+        {
+            switch (value.Type)
+            {
+                case JTokenType.String:
+                    {
+                        if (clrType == typeof(Guid))
+                        {
+                            return Guid.Parse(value.Value<string>());
+                        }
+                        else
+                        {
+                            return value.Value;
+                        }
+                    }
+                case JTokenType.Float:
+                case JTokenType.Integer:
+                    {
+                        return value.ToObject(clrType);
+                    }
+                default:
+                    return value.Value;
+            }
+        }
+
+        #endregion
+
     }
 }

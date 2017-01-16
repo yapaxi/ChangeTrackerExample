@@ -9,6 +9,6 @@ namespace IntegrationService.Host.Converters
 {
     public interface IConverter<TSource, TResult>
     {
-        IEnumerable<TResult> Convert(TSource data, RuntimeMappingSchema runtimeSchema);
+        TResult Convert(TSource data, RuntimeMappingSchema runtimeSchema);
     }
 }

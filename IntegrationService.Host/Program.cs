@@ -20,6 +20,7 @@ using Newtonsoft.Json;
 using IntegrationService.Host.Middleware;
 using IntegrationService.Host.Subscriptions;
 using IntegrationService.Host.Services;
+using IntegrationService.Contracts.v3;
 
 namespace IntegrationService.Host
 {
@@ -49,13 +50,17 @@ namespace IntegrationService.Host
             )).SingleInstance();
 
             containerBuilder.RegisterType<FlatMessageConverter>().SingleInstance();
-            
+
+            containerBuilder.RegisterType<MetadataSyncService>()
+                .As<IRequestResponseService<SyncMetadataRequest, SyncMetadataResponse>>()
+                .InstancePerLifetimeScope();
+
             containerBuilder.RegisterType<MessagingService>()
                 .As<IMessagingService<RawMessage>>()
                 .InstancePerLifetimeScope();
 
             containerBuilder.RegisterType<MessagingService>()
-                .As<IMessagingService<IEnumerable<RawMessage>>>()
+                .As<IMessagingService<IReadOnlyCollection<RawMessage>>>()
                 .InstancePerLifetimeScope();
 
             using (var container = containerBuilder.Build())

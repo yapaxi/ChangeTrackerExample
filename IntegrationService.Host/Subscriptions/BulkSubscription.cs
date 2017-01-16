@@ -24,7 +24,7 @@ namespace IntegrationService.Host.Subscriptions
         public BufferingSubscription(
             IAdvancedBus bus,
             string queue,
-            Action<IEnumerable<RawMessage>> onMessage,
+            Action<IReadOnlyCollection<RawMessage>> onMessage,
             Action onComplete,
             int bufferSize)
         {
