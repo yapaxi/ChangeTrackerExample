@@ -63,7 +63,7 @@ namespace ChangeTrackerExample
                 }
                 
                 RunLoopbackListener(scope);
-        //        RunBlockingDebugGenerator(scope);
+                RunBlockingDebugGenerator(scope);
 
                 Process.GetCurrentProcess().WaitForExit();
             }

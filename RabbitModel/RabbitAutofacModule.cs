@@ -11,6 +11,8 @@ namespace RabbitModel
 {
     public class RabbitAutofacModule : Autofac.Module
     {
+        private readonly string _password = "test";
+        private readonly string _user = "test";
         private readonly string _host = "192.168.11.169";
         private readonly string _scope;
         private readonly string _loopbackVHost;
@@ -25,24 +27,24 @@ namespace RabbitModel
         {
 
             builder
-                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.ISSync};username=test;password=test"))
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.ISSync};username={_user};password={_password}"))
                 .Named<IBus>(Buses.ISSync)
                 .InstancePerMatchingLifetimeScope(_scope);
 
             builder
-                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.SimpleMessaging};username=test;password=test"))
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.SimpleMessaging};username={_user};password={_password}"))
                 .Named<IBus>(Buses.SimpleMessaging)
                 .InstancePerMatchingLifetimeScope(_scope);
 
             builder
-                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.BulkMessaging};username=test;password=test"))
+                .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={Buses.BulkMessaging};username={_user};password={_password}"))
                 .Named<IBus>(Buses.BulkMessaging)
                 .InstancePerMatchingLifetimeScope(_scope);
 
             if (!string.IsNullOrWhiteSpace(_loopbackVHost))
             {
                 builder
-                    .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={_loopbackVHost};username=test;password=test"))
+                    .Register(e => RabbitHutch.CreateBus($@"host={_host};timeout=120;virtualHost={_loopbackVHost};username={_user};password={_password}"))
                     .Named<IBus>(Buses.Loopback)
                     .InstancePerMatchingLifetimeScope(_scope);
             }

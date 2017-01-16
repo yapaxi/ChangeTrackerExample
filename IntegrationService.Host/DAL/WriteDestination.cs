@@ -7,7 +7,13 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.DAL
 {
-    public class WriteDestination
+    public interface IWriteDestination
+    {
+        IReadOnlyDictionary<string, IStagingTable> FlattenTables { get; }
+        IStagingTable StagingTable { get; }
+    }
+
+    public class WriteDestination : IWriteDestination
     {
         private readonly IStagingTable _stagingTable;
         private readonly Dictionary<string, IStagingTable> _flattenTables;

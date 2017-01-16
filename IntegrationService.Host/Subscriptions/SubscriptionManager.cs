@@ -29,14 +29,19 @@ namespace IntegrationService.Host.Subscriptions
         private readonly ILogger _logger;
         private readonly ILoggerFactory<ILogger> _loggerFactory;
 
+        private readonly int _bulkBufferSize;
+
         private bool _disposed;
 
         public SubscriptionManager(
             IRequestLifetimeHandler handler,
             IBus isBus, IBus simpleBus, IBus bulkBus,
-            ILogger logger, ILoggerFactory<ILogger> loggerFactory)
+            ILogger logger, ILoggerFactory<ILogger> loggerFactory,
+            int bulkBufferSize = 10)
         {
             _lock = new object();
+
+            _bulkBufferSize = bulkBufferSize;
 
             _logger = logger;
             _loggerFactory = loggerFactory;
@@ -96,7 +101,7 @@ namespace IntegrationService.Host.Subscriptions
             }
         }
 
-        public void SubscribeOnDataFlow(DataMode mode, string entityName, string queue, RuntimeMappingSchema schema, WriteDestination destination)
+        public void SubscribeOnDataFlow(DataMode mode, string entityName, string queue, RuntimeMappingSchema schema, IWriteDestination destination)
         {
             if (_disposed)
             {
@@ -130,7 +135,7 @@ namespace IntegrationService.Host.Subscriptions
                             queue: queue,
                             onMessage: (message) => _messageHandler.HandleDataMessage(message, messageInfo),
                             onComplete: () => CloseAllEntitySubscriptions(entityName),
-                            bufferSize: 10,
+                            bufferSize: _bulkBufferSize,
                             logger: _loggerFactory.CreateForType(typeof(BufferingSubscription)));
                         _subscriptions[mode].Add(entityName, bulkSubscription);
                         break;

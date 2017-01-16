@@ -56,7 +56,7 @@ namespace ChangeTrackerExample.App
             var configs = GetConfigurationOrFail(entityTypeFullName);
             foreach (var config in configs)
             {
-                var items = 20000;
+                var items = 2000;
                 var ranges = config.Entity.GetEntityRanges(_context, items);
 
                 Console.WriteLine($"Found {ranges.Length} ranges, {items} items each");

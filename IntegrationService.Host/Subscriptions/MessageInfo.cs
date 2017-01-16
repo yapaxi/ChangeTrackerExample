@@ -10,7 +10,7 @@ namespace IntegrationService.Host.Subscriptions
 {
     public class MessageInfo
     {
-        public MessageInfo(RuntimeMappingSchema schema, WriteDestination destination)
+        public MessageInfo(RuntimeMappingSchema schema, IWriteDestination destination)
         {
             Schema = schema;
             Destination = destination;
@@ -18,6 +18,6 @@ namespace IntegrationService.Host.Subscriptions
 
         public RuntimeMappingSchema Schema { get; }
 
-        public WriteDestination Destination { get; }
+        public IWriteDestination Destination { get; }
     }
 }
