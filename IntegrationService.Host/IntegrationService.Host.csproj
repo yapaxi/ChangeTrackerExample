@@ -99,7 +99,7 @@
     <Compile Include="Services\IRequestResponseService.cs" />
     <Compile Include="Subscriptions\MessageInfo.cs" />
     <Compile Include="Subscriptions\RawMessage.cs" />
-    <Compile Include="Subscriptions\BulkSubscription.cs" />
+    <Compile Include="Subscriptions\BufferingSubscription.cs" />
     <Compile Include="Subscriptions\StreamingSubscription.cs" />
     <Compile Include="Subscriptions\SubscriptionManager.cs" />
     <Compile Include="Middleware\IRequestLifetimeHandler.cs" />

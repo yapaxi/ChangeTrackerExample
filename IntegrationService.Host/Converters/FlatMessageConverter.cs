@@ -25,11 +25,8 @@ namespace IntegrationService.Host.Converters
 
         public FlatMessage Convert(IReadOnlyCollection<RawMessage> data, RuntimeMappingSchema runtimeSchema)
         {
-            var properties = CreateBlankProperties(runtimeSchema, data.Sum(e => e.EntityCount));
-            foreach (var messageGroup in data)
-            {
-                ConvertJTR(Encoding.Unicode.GetString(messageGroup.Body), runtimeSchema, properties);
-            }
+            var properties = CreateBlankProperties(runtimeSchema, data.Sum(e => e.EntityCount));        
+            data.AsParallel().ForAll(messageGroup => ConvertJTR(Encoding.Unicode.GetString(messageGroup.Body), runtimeSchema, properties));
             return new FlatMessage(properties);
         }
 
@@ -89,7 +86,11 @@ namespace IntegrationService.Host.Converters
                             break;
                         case JsonToken.EndObject:
                             var objectName = pathStack.Peek();
-                            properties[objectName].Add(lineStack.Pop());
+                            var lst = properties[objectName];
+                            lock (lst)
+                            {
+                                lst.Add(lineStack.Pop());
+                            }
                             pathStack.Pop();
                             if (r.Depth == 1)
                             {

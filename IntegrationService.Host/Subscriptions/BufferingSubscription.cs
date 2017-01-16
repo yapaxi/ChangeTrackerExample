@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 using NLog;
+using System.Diagnostics;
 
 namespace IntegrationService.Host.Subscriptions
 {
@@ -20,8 +21,10 @@ namespace IntegrationService.Host.Subscriptions
         private readonly Action<IReadOnlyCollection<RawMessage>> _onMessage;
         private readonly Action _onComplete;
         private readonly ILogger _logger;
+        private readonly Stopwatch _stopwatch;
 
         private bool _disposed;
+
 
         public BufferingSubscription(
             IAdvancedBus bus,
@@ -31,6 +34,8 @@ namespace IntegrationService.Host.Subscriptions
             int bufferSize,
             ILogger logger)
         {
+            _stopwatch = new Stopwatch();
+            _stopwatch.Start();
             _logger = logger;
             _bufferSize = bufferSize;
             _onComplete = onComplete;
@@ -68,10 +73,14 @@ namespace IntegrationService.Host.Subscriptions
 
                     buffer.Add(rawMessage);
 
-                    if (buffer.Count >= 10 || lastReceived)
+                    if (buffer.Count >= _bufferSize || lastReceived)
                     {
                         _logger.Info($"Flushing buffer");
+
+
                         _onMessage(buffer);
+
+
                         buffer.Clear();
                     }
                 }
@@ -96,6 +105,9 @@ namespace IntegrationService.Host.Subscriptions
                 _disposed = true;
                 _subscription.Dispose();
             }
+
+            _stopwatch.Stop();
+            _logger.Debug($"Buffering subscription lived for {_stopwatch.Elapsed}");
         }
     }
 }

@@ -5,6 +5,7 @@ using NLog;
 using RabbitModel;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,11 +20,14 @@ namespace IntegrationService.Host.Subscriptions
         private readonly Action<RawMessage> _onMessage;
         private readonly ILogger _logger;
         private readonly string _queue;
+        private readonly Stopwatch _stopwatch;
 
         private bool _disposed;
 
         public StreamingSubscription(IAdvancedBus bus, string queue, Action<RawMessage> onMessage, ILogger logger)
         {
+            _stopwatch = new Stopwatch();
+            _stopwatch.Start();
             _queue = queue;
             _logger = logger;
             _onMessage = onMessage;
@@ -54,6 +58,9 @@ namespace IntegrationService.Host.Subscriptions
             {
                 _disposed = true;
             }
+
+            _stopwatch.Stop();
+            _logger.Debug($"Buffering subscription lived for {_stopwatch.Elapsed}");
 
             _subscription.Dispose();
         }
