@@ -1,6 +1,7 @@
 ﻿using IntegrationService.Host.DAL.Contexts;
 using IntegrationService.Host.DAL.DDL;
 using IntegrationService.Host.Domain;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -16,11 +17,12 @@ namespace IntegrationService.Host.DAL
     {
         private const string DEACTIVATED_SCHEMA_NAME = "deactivated";
         private const string STAGING_SCHEMA_NAME = "staging";
+        private readonly ILogger _logger;
 
-
-        public SchemaRepository(SchemaContext context)
+        public SchemaRepository(SchemaContext context, ILogger logger)
             : base(context)
         {
+            _logger = logger;
         }
         
         public T Add<T>(T entity) where T : class => Context.Set<T>().Add(entity);
@@ -44,11 +46,15 @@ namespace IntegrationService.Host.DAL
 
         private string CreateTableInternal(string fqTableName, TableColumnDefinition[] columns)
         {
-            Console.WriteLine($"Creating table {fqTableName}");
+            _logger.Info($"Creating table {fqTableName}");
+
             var sql = GetTableCreateSql(fqTableName, columns);
-            Console.WriteLine(sql);
+
+            _logger.Debug(sql);
+
             Context.Database.ExecuteSqlCommand(sql);
-            Console.WriteLine($"Table {fqTableName} created");
+
+            _logger.Info($"Table {fqTableName} created");
             return fqTableName;
         }
 
@@ -68,14 +74,14 @@ namespace IntegrationService.Host.DAL
 
             if (exists)
             {
-                Console.WriteLine($"Table {existingTableName} found, moving to {fqNewTableName}");
+                _logger.Info($"Table {existingTableName} found, moving to {fqNewTableName}");
                 CreateSchemaIfNotExists(DEACTIVATED_SCHEMA_NAME);
                 Context.Database.ExecuteSqlCommand($"alter schema [{DEACTIVATED_SCHEMA_NAME}] transfer {existingTableName}");
                 Context.Database.ExecuteSqlCommand("sp_rename {0}, {1}", fqMovedTableName, schemalessNewTableName);
             }
             else
             {
-                Console.WriteLine($"Table {existingTableName} not found");
+                _logger.Info($"Table {existingTableName} not found");
             }
         }
 

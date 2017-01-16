@@ -21,6 +21,9 @@ using IntegrationService.Host.Middleware;
 using IntegrationService.Host.Subscriptions;
 using IntegrationService.Host.Services;
 using IntegrationService.Contracts.v3;
+using IntegrationService.Host.DI;
+using NLog;
+using NLog.Targets;
 
 namespace IntegrationService.Host
 {
@@ -29,43 +32,21 @@ namespace IntegrationService.Host
         static void Main(string[] args)
         {
             var rootScopeName = "root";
-            var containerBuilder = new ContainerBuilder();
 
-            containerBuilder.RegisterModule(new RabbitAutofacModule(rootScopeName));
+            var builder = new ContainerBuilder();
+            var logFactory = new NLogFactory();
 
-            containerBuilder.Register(e => new SchemaContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
-            containerBuilder.Register(e => new DataContext(@"server =.;database=SchemaDB;integrated security=SSPI"));
+            builder.RegisterModule(new ISModule<ILogger>(
+                schemaDBConnectionString: @"server =.;database=SchemaDB;integrated security=SSPI",
+                dataDBConnectionString: @"server =.;database=SchemaDB;integrated security=SSPI",
+                rootScopeName: rootScopeName,
+                loggerFactory: logFactory)
+            );
 
-            containerBuilder.RegisterType<SchemaRepository>().InstancePerLifetimeScope();
-            containerBuilder.RegisterType<DataRepository>().InstancePerLifetimeScope();
-            containerBuilder.RegisterType<SchemaPersistenceService>().InstancePerLifetimeScope();
-
-            containerBuilder.RegisterType<RequestLifetimeHandler>().As<IRequestLifetimeHandler>().SingleInstance();
-
-            containerBuilder.Register(e => new SubscriptionManager(
-                handler: e.Resolve<IRequestLifetimeHandler>(),
-                isBus: e.ResolveNamed<IBus>(Buses.ISSync),
-                simpleBus: e.ResolveNamed<IBus>(Buses.SimpleMessaging), 
-                bulkBus: e.ResolveNamed<IBus>(Buses.BulkMessaging)
-            )).SingleInstance();
-
-            containerBuilder.RegisterType<FlatMessageConverter>().SingleInstance();
-
-            containerBuilder.RegisterType<MetadataSyncService>()
-                .As<IRequestResponseService<SyncMetadataRequest, SyncMetadataResponse>>()
-                .InstancePerLifetimeScope();
-
-            containerBuilder.RegisterType<MessagingService>()
-                .As<IMessagingService<RawMessage>>()
-                .InstancePerLifetimeScope();
-
-            containerBuilder.RegisterType<MessagingService>()
-                .As<IMessagingService<IReadOnlyCollection<RawMessage>>>()
-                .InstancePerLifetimeScope();
-
-            using (var container = containerBuilder.Build())
+            using (var container = builder.Build())
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
             {
+                var programLogger = logFactory.CreateForType(typeof(Program));
                 var dbSchemaService = rootScope.Resolve<SchemaPersistenceService>();
                 var subscriptionManager = rootScope.Resolve<SubscriptionManager>();
 
@@ -82,14 +63,14 @@ namespace IntegrationService.Host
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(e);
+                        programLogger.Error(e);
                         throw;
                     }
                 }
 
                 subscriptionManager.SubscribeOnMetadataSync();
 
-                Console.WriteLine("All Run");
+                programLogger.Info("All Run");
 
                 Process.GetCurrentProcess().WaitForExit();
             }

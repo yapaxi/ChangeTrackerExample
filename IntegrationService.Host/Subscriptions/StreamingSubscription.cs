@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using EasyNetQ;
 using EasyNetQ.Topology;
+using NLog;
 using RabbitModel;
 using System;
 using System.Collections.Generic;
@@ -16,11 +17,15 @@ namespace IntegrationService.Host.Subscriptions
         private readonly object _lock;
         private readonly IDisposable _subscription;
         private readonly Action<RawMessage> _onMessage;
+        private readonly ILogger _logger;
+        private readonly string _queue;
 
         private bool _disposed;
 
-        public StreamingSubscription(IAdvancedBus bus, string queue, Action<RawMessage> onMessage)
+        public StreamingSubscription(IAdvancedBus bus, string queue, Action<RawMessage> onMessage, ILogger logger)
         {
+            _queue = queue;
+            _logger = logger;
             _onMessage = onMessage;
             _lock = new object();
             _subscription = bus.Consume(
@@ -39,6 +44,7 @@ namespace IntegrationService.Host.Subscriptions
                 }
             }
 
+            _logger.Debug($"Received message from queue {_queue}");
             _onMessage(new RawMessage(data, (int)properties.Headers[ISMessageHeader.ENTITY_COUNT]));
         }
 

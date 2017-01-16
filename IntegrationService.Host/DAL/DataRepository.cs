@@ -9,16 +9,18 @@ using System.Threading.Tasks;
 using EntityFramework.BulkInsert.Extensions;
 using System.Data;
 using Common;
+using NLog;
 
 namespace IntegrationService.Host.DAL
 {
     public class DataRepository : RepositoryBase<DataContext>
     {
+        private readonly ILogger _logger;
 
-        public DataRepository(DataContext dataContext)
+        public DataRepository(DataContext dataContext, ILogger logger)
             : base(dataContext)
         {
-
+            _logger = logger;
         }
 
         public void Merge(string tableName, IReadOnlyDictionary<string, object> keyValues)
@@ -63,8 +65,10 @@ namespace IntegrationService.Host.DAL
                     }
                     dataTable.Rows.Add(row);
                 }
+
                 bulk.WriteToServer(dataTable);
-                Console.WriteLine($"BulkInsert {dataTable.Rows.Count} rows to table {table.FullName}");
+
+                _logger.Info($"BulkInsert {dataTable.Rows.Count} rows to table {table.FullName}");
             }
         }
     }

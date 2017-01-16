@@ -5,6 +5,7 @@ using IntegrationService.Contracts.v3;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.Metadata;
 using IntegrationService.Host.Subscriptions;
+using NLog;
 using RabbitModel;
 using System;
 using System.Collections.Generic;
@@ -18,21 +19,23 @@ namespace IntegrationService.Host.Services
     {
         private readonly SchemaPersistenceService _dbSchemaService;
         private readonly SubscriptionManager _subscriptionManager;
+        private readonly ILogger _logger;
 
-        public MetadataSyncService(SchemaPersistenceService service, SubscriptionManager subscriptionManager)
+        public MetadataSyncService(SchemaPersistenceService service, SubscriptionManager subscriptionManager, ILogger logger)
         {
+            _logger = logger;
             _dbSchemaService = service;
             _subscriptionManager = subscriptionManager;
         }
         
         public SyncMetadataResponse Response(SyncMetadataRequest request)
         {
-            Console.WriteLine("Accepted sync request");
+            _logger.Info("Accepted sync request");
 
             var responseItems = new List<SyncMetadataResponseItem>();
             foreach (var item in request.Items)
             {
-                Console.WriteLine($"Handling entity: {item.EntityName}");
+                _logger.Info($"Handling entity: {item.EntityName}");
                 try
                 {
                     var responseItem = new SyncMetadataResponseItem() { Name = item.EntityName };
@@ -40,7 +43,7 @@ namespace IntegrationService.Host.Services
 
                     if (_subscriptionManager.SubscriptionExists(item.EntityName, DataMode.Bulk))
                     {
-                        Console.WriteLine($"Bulk subscription already exists for {item.EntityName}");
+                        _logger.Info($"Bulk subscription already exists for {item.EntityName}");
                         responseItem.FullRebuildInProgress = true;
                     }
                     else
@@ -50,7 +53,7 @@ namespace IntegrationService.Host.Services
                         {
                             mode = DataMode.Bulk;
                             responseItem.FullRebuildRequired = true;
-                            Console.WriteLine($"Full rebuild required; closing all existing subscriptions for {item.EntityName}");
+                            _logger.Info($"Full rebuild required; closing all existing subscriptions for {item.EntityName}");
                             _subscriptionManager.CloseAllEntitySubscriptions(item.EntityName);
                         }
                         else
@@ -58,11 +61,11 @@ namespace IntegrationService.Host.Services
                             mode = DataMode.RowByRow;
                         }
 
-                        Console.WriteLine($"Altering schema for {item.EntityName}");
+                        _logger.Info($"Altering schema for {item.EntityName}");
 
                         var destinationTable = _dbSchemaService.UseSchema(item.EntityName, item.QueueName, item.Schema);
 
-                        Console.WriteLine($"Subscribing for {item.EntityName} in {mode} mode");
+                        _logger.Info($"Subscribing for {item.EntityName} in {mode} mode");
 
                         _subscriptionManager.SubscribeOnDataFlow(
                             mode,
@@ -87,7 +90,7 @@ namespace IntegrationService.Host.Services
                 }
             }
 
-            Console.WriteLine("Sync request handeled");
+            _logger.Info("Sync request handeled");
 
             return new SyncMetadataResponse() { Items = responseItems.ToArray() };
         }

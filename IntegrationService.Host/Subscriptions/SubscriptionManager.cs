@@ -3,7 +3,9 @@ using EasyNetQ;
 using EasyNetQ.Topology;
 using IntegrationService.Contracts.v3;
 using IntegrationService.Host.DAL;
+using IntegrationService.Host.DI;
 using IntegrationService.Host.Middleware;
+using NLog;
 using RabbitModel;
 using System;
 using System.Collections.Generic;
@@ -24,11 +26,20 @@ namespace IntegrationService.Host.Subscriptions
         private readonly IBus _bulkBus;
         private readonly IRequestLifetimeHandler _messageHandler;
 
+        private readonly ILogger _logger;
+        private readonly ILoggerFactory<ILogger> _loggerFactory;
+
         private bool _disposed;
 
-        public SubscriptionManager(IRequestLifetimeHandler handler, IBus isBus, IBus simpleBus, IBus bulkBus)
+        public SubscriptionManager(
+            IRequestLifetimeHandler handler,
+            IBus isBus, IBus simpleBus, IBus bulkBus,
+            ILogger logger, ILoggerFactory<ILogger> loggerFactory)
         {
             _lock = new object();
+
+            _logger = logger;
+            _loggerFactory = loggerFactory;
 
             _isBus = isBus;
             _simpleBus = simpleBus;
@@ -109,7 +120,8 @@ namespace IntegrationService.Host.Subscriptions
                         var streamingSubscription = new StreamingSubscription(
                             bus: _simpleBus.Advanced,
                             queue: queue,
-                            onMessage: (message) => _messageHandler.HandleDataMessage(message, messageInfo));
+                            onMessage: (message) => _messageHandler.HandleDataMessage(message, messageInfo),
+                            logger: _loggerFactory.CreateForType(typeof(BufferingSubscription)));
                         _subscriptions[mode].Add(entityName, streamingSubscription);
                         break;
                     case DataMode.Bulk:
@@ -118,7 +130,8 @@ namespace IntegrationService.Host.Subscriptions
                             queue: queue,
                             onMessage: (message) => _messageHandler.HandleDataMessage(message, messageInfo),
                             onComplete: () => CloseAllEntitySubscriptions(entityName),
-                            bufferSize: 10);
+                            bufferSize: 10,
+                            logger: _loggerFactory.CreateForType(typeof(BufferingSubscription)));
                         _subscriptions[mode].Add(entityName, bulkSubscription);
                         break;
                     default:
@@ -129,7 +142,7 @@ namespace IntegrationService.Host.Subscriptions
 
         public void CloseAllEntitySubscriptions(string entityName)
         {
-            Console.WriteLine($"Removing all subscriptions for {entityName}");
+            _logger.Info($"Removing all subscriptions for {entityName}");
 
             if (_disposed)
             {
@@ -162,7 +175,7 @@ namespace IntegrationService.Host.Subscriptions
                 throw new InvalidOperationException($"Failed to create subscription for {entityName}, because there is existing one");
             }
 
-            Console.WriteLine($"Creating new subscription for {entityName}");
+            _logger.Info($"Creating new subscription for {entityName}");
         }
 
         public void Dispose()

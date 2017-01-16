@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using NLog;
 
 namespace IntegrationService.Host.Subscriptions
 {
@@ -18,7 +19,8 @@ namespace IntegrationService.Host.Subscriptions
         private readonly IDisposable _subscription;
         private readonly Action<IReadOnlyCollection<RawMessage>> _onMessage;
         private readonly Action _onComplete;
-        
+        private readonly ILogger _logger;
+
         private bool _disposed;
 
         public BufferingSubscription(
@@ -26,8 +28,10 @@ namespace IntegrationService.Host.Subscriptions
             string queue,
             Action<IReadOnlyCollection<RawMessage>> onMessage,
             Action onComplete,
-            int bufferSize)
+            int bufferSize,
+            ILogger logger)
         {
+            _logger = logger;
             _bufferSize = bufferSize;
             _onComplete = onComplete;
             _onMessage = onMessage;
@@ -60,13 +64,13 @@ namespace IntegrationService.Host.Subscriptions
 
                     var rangeId = (int)properties.Headers[ISMessageHeader.BATCH_ORDINAL];
 
-                    Console.WriteLine($"[{nameof(BufferingSubscription)}] Accepted range: rangeId={rangeId},isLast={lastReceived}");
+                    _logger.Info($"Accepted range: rangeId={rangeId},isLast={lastReceived}");
 
                     buffer.Add(rawMessage);
 
                     if (buffer.Count >= 10 || lastReceived)
                     {
-                        Console.WriteLine($"[{nameof(BufferingSubscription)}] Flushing buffer");
+                        _logger.Info($"Flushing buffer");
                         _onMessage(buffer);
                         buffer.Clear();
                     }
@@ -74,13 +78,13 @@ namespace IntegrationService.Host.Subscriptions
 
                 if (lastReceived)
                 {
-                    Console.WriteLine("Last message received");
+                    _logger.Info("Last message received");
                     _onComplete();
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                _logger.Error(e);
                 throw;
             }
         }

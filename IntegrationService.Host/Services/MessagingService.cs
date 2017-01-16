@@ -4,6 +4,7 @@ using EasyNetQ.Topology;
 using IntegrationService.Host.Converters;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.Subscriptions;
+using NLog;
 using RabbitModel;
 using System;
 using System.Collections.Generic;
@@ -14,35 +15,28 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.Services
 {
-    public interface IMessagingService<TMessage>
-    {
-        void WriteMessage(TMessage rawMessage, MessageInfo info);
-    }
-
     public class MessagingService : 
         IMessagingService<RawMessage>,
         IMessagingService<IReadOnlyCollection<RawMessage>>
     {
         private readonly DataRepository _repository;
         private readonly FlatMessageConverter _converter;
+        private readonly ILogger _logger;
 
-        public MessagingService(FlatMessageConverter converter, DataRepository repository)
+        public MessagingService(FlatMessageConverter converter, DataRepository repository, ILogger logger)
         {
             _repository = repository;
             _converter = converter;
+            _logger = logger;
         }
 
         public void WriteMessage(RawMessage rawMessage, MessageInfo info)
         {
-            Console.WriteLine($"\tinserting...");
-            Console.Write("\t");
-
             using (var tran = _repository.BeginTransaction(System.Data.IsolationLevel.ReadCommitted))
             {
                 WriteSingleMessage(rawMessage, info);
                 tran.Commit();
             }
-            Console.WriteLine($"\n\tinserted");
         }
 
         private void WriteSingleMessage(RawMessage rawMessage, MessageInfo info)
@@ -52,7 +46,7 @@ namespace IntegrationService.Host.Services
             foreach (var message in messages.Payload)
             {
                 var table = info.Destination.FlattenTables[message.Key];
-                Console.Write(table.SystemName + "... ");
+                _logger.Debug($"inserting line into {table.SystemName}");
                 foreach (var line in message.Value)
                 {
                     _repository.Merge(table.FullName, line);
@@ -66,28 +60,20 @@ namespace IntegrationService.Host.Services
             sw.Start();
             var converter = new FlatMessageConverter();
             var roots = converter.Convert(rawMessage, info.Schema);
-            WriteElapsed(sw);
-            GroupedWrite(info, roots);
-            WriteElapsed(sw);
-            sw.Stop();
-        }
-
-        private static void WriteElapsed(Stopwatch sw)
-        {
-            var c = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine(sw.Elapsed);
-            Console.ForegroundColor = c;
-            sw.Restart();
-        }
-
-        private void GroupedWrite(MessageInfo info, FlatMessage roots)
-        {
+            WriteElapsed("convert duration", sw);
             foreach (var k in roots.Payload)
             {
                 var table = info.Destination.FlattenTables[k.Key];
                 _repository.BulkInsert(table, k.Value);
             }
+            WriteElapsed("insert duration", sw);
+            sw.Stop();
+        }
+
+        private void WriteElapsed(string name, Stopwatch sw)
+        {
+            _logger.Debug($"{name}: {sw.Elapsed}");
+            sw.Restart();
         }
     }
 }

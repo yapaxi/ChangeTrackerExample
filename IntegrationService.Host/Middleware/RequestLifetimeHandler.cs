@@ -8,6 +8,7 @@ using IntegrationService.Host.Metadata;
 using IntegrationService.Host.Services;
 using IntegrationService.Host.Subscriptions;
 using Newtonsoft.Json;
+using NLog;
 using RabbitModel;
 using System;
 using System.Collections.Generic;
@@ -20,10 +21,12 @@ namespace IntegrationService.Host.Middleware
     public class RequestLifetimeHandler : IRequestLifetimeHandler
     {
         private readonly ILifetimeScope _scope;
+        private readonly ILogger _logger;
         
-        public RequestLifetimeHandler(ILifetimeScope scope)
+        public RequestLifetimeHandler(ILifetimeScope scope, ILogger logger)
         {
             _scope = scope;
+            _logger = logger;
         }
         
         public TResponse Response<TRequest, TResponse>(TRequest request)
@@ -37,7 +40,7 @@ namespace IntegrationService.Host.Middleware
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                _logger.Error(e);
                 throw;
             }
         }
@@ -53,7 +56,7 @@ namespace IntegrationService.Host.Middleware
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                _logger.Error(e);
                 throw;
             }
         }
