@@ -72,6 +72,7 @@
   <ItemGroup>
     <Compile Include="FakeImpl\ConsumerBusFake.cs" />
     <Compile Include="FakeImpl\RespondBusFake.cs" />
+    <Compile Include="MetadataSyncServiceTests.cs" />
     <Compile Include="SubscriptionManagerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

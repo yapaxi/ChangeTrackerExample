@@ -24,6 +24,7 @@ namespace IntegrationService.Host.Subscriptions
         private readonly Stopwatch _stopwatch;
 
         private bool _disposed;
+        private List<RawMessage> _buffer;
 
 
         public BufferingSubscription(
@@ -42,15 +43,15 @@ namespace IntegrationService.Host.Subscriptions
             _onMessage = onMessage;
             _lock = new object();
 
-            var messages = new List<RawMessage>(_bufferSize);
+            _buffer = new List<RawMessage>(_bufferSize);
 
             _subscription = bus.Consume(
                 new Queue(queue, false),
-                (data, properties, info) => HandleMessage(data, properties, messages)
+                (data, properties, info) => HandleMessage(data, properties)
             );
         }
 
-        private void HandleMessage(byte[] data, MessageProperties properties, List<RawMessage> buffer)
+        private void HandleMessage(byte[] data, MessageProperties properties)
         {
             try
             {
@@ -71,17 +72,14 @@ namespace IntegrationService.Host.Subscriptions
 
                     _logger.Info($"Accepted range: rangeId={rangeId},isLast={lastReceived}");
 
-                    buffer.Add(rawMessage);
+                    _buffer.Add(rawMessage);
 
-                    if (buffer.Count >= _bufferSize || lastReceived)
+                    if (_buffer.Count >= _bufferSize || lastReceived)
                     {
                         _logger.Info($"Flushing buffer");
-
-
+                        var buffer = _buffer;
                         _onMessage(buffer);
-
-
-                        buffer.Clear();
+                        _buffer = new List<RawMessage>(_bufferSize);
                     }
                 }
 

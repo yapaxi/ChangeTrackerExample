@@ -8,17 +8,7 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.DAL
 {
-    public interface IStagingTable
-    {
-        string FullName { get; }
-
-        string SystemName { get; }
-
-        IReadOnlyCollection<IStagingTable> Children { get; }
-
-        IReadOnlyCollection<TableColumnDefinition> Columns { get; }
-    }
-
+   
     public class StagingTable : IStagingTable
     {
         public string FullName { get; set; }

@@ -6,6 +6,7 @@ using IntegrationService.Contracts.v3;
 using IntegrationService.Host.DAL;
 using IntegrationService.Host.Metadata;
 using IntegrationService.Host.Services;
+using IntegrationService.Host.Services.Policy;
 using IntegrationService.Host.Subscriptions;
 using Newtonsoft.Json;
 using NLog;
@@ -31,34 +32,61 @@ namespace IntegrationService.Host.Middleware
         
         public TResponse Response<TRequest, TResponse>(TRequest request)
         {
-            try
-            {
-                using (var scope = _scope.BeginLifetimeScope())
-                {
-                    return scope.Resolve<IRequestResponseService<TRequest, TResponse>>().Response(request);
-                }
-            }
-            catch (Exception e)
-            {
-                _logger.Error(e);
-                throw;
-            }
+            return Execute<IRequestResponseService<TRequest, TResponse>, TResponse>(e => e.Response(request));
         }
 
         public void HandleDataMessage<TMessage>(TMessage message, MessageInfo info)
         {
-            try
+            Execute<IMessagingService<TMessage>>(e => e.WriteMessage(message, info));
+        }
+
+        private void Execute<TService>(Action<TService> action)
+        {
+            using (var scope = _scope.BeginLifetimeScope())
             {
-                using (var scope = _scope.BeginLifetimeScope())
+                var service = scope.Resolve<TService>();
+                var serviceType = service.GetType();
+                var syncObject = GetSyncObjectForService(serviceType);
+
+                if (syncObject == null)
                 {
-                    scope.Resolve<IMessagingService<TMessage>>().WriteMessage(message, info);
+                    _logger.Debug($"Executing {serviceType.FullName} without synchronization");
+                    action(service);
+                }
+                else
+                {
+                    _logger.Debug($"Executing {serviceType.FullName} with synchronization");
+                    lock (syncObject)
+                    {
+                        action(service);
+                    }
                 }
             }
-            catch (Exception e)
+        }
+        private TResult Execute<TService, TResult>(Func<TService, TResult> action)
+        {
+            using (var scope = _scope.BeginLifetimeScope())
             {
-                _logger.Error(e);
-                throw;
+                var service = scope.Resolve<TService>();
+                var syncObject = GetSyncObjectForService(service.GetType());
+
+                if (syncObject == null)
+                {
+                    return action(service);
+                }
+                else
+                {
+                    lock (syncObject)
+                    {
+                        return action(service);
+                    }
+                }
             }
+        }
+
+        private object GetSyncObjectForService(Type type)
+        {
+            return (type.GetCustomAttributes(typeof(SerialExecutionAttribute), true).FirstOrDefault() as SerialExecutionAttribute)?.Lock;
         }
     }
 }

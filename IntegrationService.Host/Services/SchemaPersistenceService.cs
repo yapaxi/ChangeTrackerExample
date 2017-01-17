@@ -8,10 +8,12 @@ using IntegrationService.Host.DAL;
 using IntegrationService.Host.Domain;
 using Newtonsoft.Json;
 using IntegrationService.Host.DAL.DDL;
+using IntegrationService.Host.Services;
+using IntegrationService.Host.Metadata;
 
-namespace IntegrationService.Host.Metadata
+namespace IntegrationService.Host.Services
 {
-    public class SchemaPersistenceService
+    public class SchemaPersistenceService : ISchemaPersistenceService
     {
         private readonly SchemaRepository _repository;
 
@@ -20,51 +22,51 @@ namespace IntegrationService.Host.Metadata
             _repository = repository;
         }
 
-        public Mapping[] GetActiveMappings()
+        public ResolvedMapping[] GetActiveMappings()
         {
-            return _repository.Mappings.Where(e => e.IsActive).ToArray();
+            return _repository.Mappings.Where(e => e.IsActive).ToArray().Select(e => new ResolvedMapping(e)).ToArray();
         }
 
-        public SchemaStatus GetSchemaStatus(string name, string queueName, MappingSchema schema)
+        public SchemaStatus GetSchemaStatus(string entityName, string queueName, MappingSchema schema)
         {
             try
             {
-                var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
+                var mappings = _repository.Mappings.Where(e => e.Name == entityName).ToArray();
                 var existing = mappings.FirstOrDefault(e => e.Checksum == schema.Checksum);
-                return CheckSchemaInternal(name, schema, mappings, existing, failHard: false);
+                return CheckSchemaInternal(entityName, schema, mappings, existing, failHard: false);
             }
             catch (Exception e)
             {
-                return new SchemaStatus(name, e);
+                return new SchemaStatus(entityName, e);
             }
         }
 
-        public IStagingTable UseSchema(string name, string queueName, MappingSchema schema)
+        public IWriteDestination UseSchema(string entityName, string queueName, MappingSchema schema)
         {
             using (var tran = _repository.BeginTransaction(System.Data.IsolationLevel.ReadCommitted))
             {
-                var table = GetOrCreateTableForSchema(name, queueName, schema);
+                var table = GetOrCreateTableForSchema(entityName, queueName, schema);
                 tran.Commit();
                 return table;
             }
         }
 
-        private IStagingTable GetOrCreateTableForSchema(string name, string queueName, MappingSchema schema)
+        private IWriteDestination GetOrCreateTableForSchema(string entityName, string queueName, MappingSchema schema)
         {
-            var mappings = _repository.Mappings.Where(e => e.Name == name).ToArray();
+            var mappings = _repository.Mappings.Where(e => e.Name == entityName).ToArray();
             var existing = mappings.FirstOrDefault(e => e.Checksum == schema.Checksum);
-            var result = CheckSchemaInternal(name, schema, mappings, existing, failHard: true);
+            var result = CheckSchemaInternal(entityName, schema, mappings, existing, failHard: true);
 
             if (result.FullRebuildRequired)
             {
-                var table = CreateTables(name, schema.Properties);
+                var table = CreateTables(entityName, schema.Properties);
 
                 DeactivateAll(mappings);
 
                 var mapping = new Mapping()
                 {
                     CreatedAt = DateTime.UtcNow,
-                    Name = name,
+                    Name = entityName,
                     QueueName = queueName
                 };
 
@@ -73,15 +75,15 @@ namespace IntegrationService.Host.Metadata
                 _repository.Add(mapping);
                 _repository.SaveChanges();
 
-                return table;
+                return new WriteDestination(table);
             }
             else if (result.IsActive)
             {
-                return JsonConvert.DeserializeObject<StagingTable>(existing.StagingTables);
+                return ResolvedMapping.GetWriteDestination(existing);
             }
             else if (!result.IsActive)
             {
-                var table = CreateTables(name, schema.Properties);
+                var table = CreateTables(entityName, schema.Properties);
 
                 DeactivateAll(mappings);
 
@@ -89,17 +91,17 @@ namespace IntegrationService.Host.Metadata
 
                 _repository.SaveChanges();
                 
-                return table;
+                return new WriteDestination(table);
             }
 
             throw new InvalidOperationException("Unexpected result");
         }
 
-        private static SchemaStatus CheckSchemaInternal(string name, MappingSchema schema, Mapping[] mappings, Mapping existing, bool failHard)
+        private static SchemaStatus CheckSchemaInternal(string entityName, MappingSchema schema, Mapping[] mappings, Mapping existing, bool failHard)
         {
             if (existing != null)
             {
-                return new SchemaStatus(name, false, existing.IsActive);
+                return new SchemaStatus(entityName, false, existing.IsActive);
             }
             else
             {
@@ -113,11 +115,11 @@ namespace IntegrationService.Host.Metadata
                     {
                         throw exception;
                     }
-                    return new SchemaStatus(name, exception);
+                    return new SchemaStatus(entityName, exception);
                 }
                 else
                 {
-                    return new SchemaStatus(name, true, false);
+                    return new SchemaStatus(entityName, true, false);
                 }
             }
         }

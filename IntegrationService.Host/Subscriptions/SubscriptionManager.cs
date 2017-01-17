@@ -1,4 +1,5 @@
 ﻿using Common;
+using Common.Runtime;
 using EasyNetQ;
 using EasyNetQ.Topology;
 using IntegrationService.Contracts.v3;
@@ -15,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace IntegrationService.Host.Subscriptions
 {
-    public class SubscriptionManager : IDisposable
+    public class SubscriptionManager : ISubscriptionManager, IDisposable
     {
         private IDisposable _syncMetadataSubscription;
         private readonly Dictionary<DataMode, Dictionary<string, IDisposable>> _subscriptions;
@@ -101,7 +102,7 @@ namespace IntegrationService.Host.Subscriptions
             }
         }
 
-        public void SubscribeOnDataFlow(DataMode mode, string entityName, string queue, RuntimeMappingSchema schema, IWriteDestination destination)
+        public void SubscribeOnDataFlow(DataMode mode, string entityName, string queue, IRuntimeMappingSchema schema, IWriteDestination destination)
         {
             if (_disposed)
             {

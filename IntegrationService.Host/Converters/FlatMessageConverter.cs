@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.IO;
 using IntegrationService.Host.Subscriptions;
+using Common.Runtime;
 
 namespace IntegrationService.Host.Converters
 {
@@ -16,21 +17,21 @@ namespace IntegrationService.Host.Converters
         IConverter<IReadOnlyCollection<RawMessage>, FlatMessage>,
         IConverter<RawMessage, FlatMessage>
     {
-        public FlatMessage Convert(RawMessage data, RuntimeMappingSchema runtimeSchema)
+        public FlatMessage Convert(RawMessage data, IRuntimeMappingSchema runtimeSchema)
         {
             var properties = CreateBlankProperties(runtimeSchema, data.EntityCount);
             ConvertJTR(Encoding.Unicode.GetString(data.Body), runtimeSchema, properties);
             return new FlatMessage(properties);
         }
 
-        public FlatMessage Convert(IReadOnlyCollection<RawMessage> data, RuntimeMappingSchema runtimeSchema)
+        public FlatMessage Convert(IReadOnlyCollection<RawMessage> data, IRuntimeMappingSchema runtimeSchema)
         {
             var properties = CreateBlankProperties(runtimeSchema, data.Sum(e => e.EntityCount));        
             data.AsParallel().ForAll(messageGroup => ConvertJTR(Encoding.Unicode.GetString(messageGroup.Body), runtimeSchema, properties));
             return new FlatMessage(properties);
         }
 
-        private void ConvertJTR(string json, RuntimeMappingSchema runtimeSchema, Dictionary<string, List<Dictionary<string, object>>> properties)
+        private void ConvertJTR(string json, IRuntimeMappingSchema runtimeSchema, Dictionary<string, List<Dictionary<string, object>>> properties)
         {
             using (var r = new JsonTextReader(new StringReader(json)))
             {
@@ -112,7 +113,7 @@ namespace IntegrationService.Host.Converters
             }
         }
 
-        private static Dictionary<string, List<Dictionary<string, object>>> CreateBlankProperties(RuntimeMappingSchema runtimeSchema, int estimatedEntitiesCount)
+        private static Dictionary<string, List<Dictionary<string, object>>> CreateBlankProperties(IRuntimeMappingSchema runtimeSchema, int estimatedEntitiesCount)
         {
             return runtimeSchema.Objects.ToDictionary(e => e.Key, e => new List<Dictionary<string, object>>(estimatedEntitiesCount));
         }

@@ -12,6 +12,7 @@ using RabbitModel;
 using System.Collections.Generic;
 using Common;
 using IntegrationService.Host.DAL;
+using Common.Runtime;
 
 namespace IntegrationServiceTests
 {
@@ -57,7 +58,6 @@ namespace IntegrationServiceTests
             Assert.AreEqual(response, result);
         }
 
-
         [TestMethod]
         public void SimpleMessagingSubscription()
         {
@@ -79,34 +79,140 @@ namespace IntegrationServiceTests
             _middleware.Verify();
         }
 
+        #region BULK
+
         [TestMethod]
-        public void BulkMessagingSubscription()
+        public void BulkMessagingSubscription_Count_Is_Less_Than_Max_Buffer_Size()
+        {
+            TestBulkSubscription(_bulkBufferSize - 1, null, Times.Never(), Times.Never());
+        }
+
+        [TestMethod]
+        public void BulkMessagingSubscription_Count_Is_Less_Than_Max_Buffer_Size_But_Last_Sent()
+        {
+            TestBulkSubscription(_bulkBufferSize - 1, _bulkBufferSize - 1, Times.Once(), Times.Once(), sendLastMessage: true);
+        }
+
+        [TestMethod]
+        public void BulkMessagingSubscription_Count_Equals_To_Max_Buffer_Size()
+        {
+            TestBulkSubscription(_bulkBufferSize, _bulkBufferSize, Times.Once(), Times.Once());
+        }
+
+        [TestMethod]
+        public void BulkMessagingSubscription_Count_Is_Greater_Than_Max_Buffer_Size()
+        {
+            TestBulkSubscription(_bulkBufferSize + 1, _bulkBufferSize, Times.Once(), Times.Once());
+        }
+
+        [TestMethod]
+        public void BulkMessagingSubscription_Count_Is_Double_Of_Max_Buffer_Size()
+        {
+            TestBulkSubscription(_bulkBufferSize * 2, _bulkBufferSize, Times.Exactly(2), Times.Exactly(2));
+        }
+
+        [TestMethod]
+        public void BulkMessagingSubscription_Count_Is_LessThanDouble_Of_Max_Buffer_Size()
+        {
+            TestBulkSubscription(_bulkBufferSize * 2 - 1, _bulkBufferSize, Times.Once(), Times.Once());
+        }
+
+        [TestMethod]
+        public void BulkMessagingSubscription_Count_Is_GreaterThanDouble_Of_Max_Buffer_Size()
+        {
+            TestBulkSubscription(_bulkBufferSize * 2 + 1, _bulkBufferSize, Times.Exactly(2), Times.Exactly(2));
+        }
+
+        private void TestBulkSubscription(int countToSend, int? expectedReceivedPerCall, Times exactFlushTimes, Times anyFlushTimes, bool sendLastMessage = false)
         {
             var entityCount = 100500;
             var data = new byte[] { 0x01, 0x02, 0x03, 0x04 };
-            var schema = new RuntimeMappingSchema(new MappingSchema(new MappingProperty[0], 1234, DateTime.UtcNow));
+            var schema = new Mock<IRuntimeMappingSchema>();
             var writeDst = new Mock<IWriteDestination>();
 
-            _middleware.Setup(e => e.HandleDataMessage(
-                It.Is<IReadOnlyCollection<RawMessage>>(q => q.Count == _bulkBufferSize),
-                It.Is<MessageInfo>(q => q.Schema == schema && q.Destination == writeDst.Object))).Verifiable();
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, "azaza", "uzuzuz", schema.Object, writeDst.Object);
 
-            _sm.SubscribeOnDataFlow(DataMode.Bulk, "azaza", "uzuzuz", schema, writeDst.Object);
-
-            var props = new MessageProperties();
-            props.Headers = new Dictionary<string, object>()
+            for (int i = 0; i < countToSend; i++)
             {
-                { ISMessageHeader.ENTITY_COUNT, entityCount },
-                { ISMessageHeader.BATCH_IS_LAST, false },
-                { ISMessageHeader.BATCH_ORDINAL, -1 },
-            };
+                var props = new MessageProperties();
 
-            for (int i = 0; i < _bulkBufferSize; i++)
-            {
-                _dataBus.Send(data, props, new MessageReceivedInfo());
+                props.Headers = new Dictionary<string, object>()
+                {
+                    { ISMessageHeader.ENTITY_COUNT, entityCount },
+                    { ISMessageHeader.BATCH_IS_LAST, false },
+                    { ISMessageHeader.BATCH_ORDINAL, -1 },
+                };
+
+                if (sendLastMessage && i == countToSend - 1)
+                {
+                    props.Headers[ISMessageHeader.BATCH_IS_LAST] = true;
+                    _dataBus.Send(data, props, new MessageReceivedInfo());
+                }
+                else
+                {
+                    _dataBus.Send(data, props, new MessageReceivedInfo());
+                }
             }
 
+            if (expectedReceivedPerCall != null)
+            {
+                _middleware.Verify(e => e.HandleDataMessage(
+                    It.Is<IReadOnlyCollection<RawMessage>>(q => q.Count == expectedReceivedPerCall.Value),
+                    It.Is<MessageInfo>(q => q.Schema == schema.Object && q.Destination == writeDst.Object)), exactFlushTimes);
+            }
+            _middleware.Verify(e => e.HandleDataMessage(It.IsAny<IReadOnlyCollection<RawMessage>>(), It.IsAny<MessageInfo>()), anyFlushTimes);
             _middleware.Verify();
+        }
+
+        #endregion
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void SubscribeUnsubscribe_DublicateSubscription()
+        {
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, "a", "azaza", null, null);
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, "a", "azaza", null, null);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void SubscribeUnsubscribe_SameEntity_DifferentModes()
+        {
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, "a", "azaza", null, null);
+            _sm.SubscribeOnDataFlow(DataMode.RowByRow, "a", "azaza", null, null);
+        }
+
+        [TestMethod]
+        public void SubscribeUnsubscribe_DifferentEntities_DifferentModes()
+        {
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, "a", "azaza", null, null);
+            _sm.SubscribeOnDataFlow(DataMode.RowByRow, "b", "azaza", null, null);
+        }
+
+        [TestMethod]
+        public void SubscribeUnsubscribe_DifferentEntities_SameModes()
+        {
+            _sm.SubscribeOnDataFlow(DataMode.RowByRow, "a", "azaza", null, null);
+            _sm.SubscribeOnDataFlow(DataMode.RowByRow, "b", "azaza", null, null);
+
+            _sm.CloseAllEntitySubscriptions("a");
+            _sm.CloseAllEntitySubscriptions("b");
+
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, "a", "azaza", null, null);
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, "b", "azaza", null, null);
+        }
+
+        [TestMethod]
+        public void SubscribeUnsubscribe_SameEntity_DifferentModes_Unsubcribe()
+        {
+            var entity = "a";
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, entity, "azaza", null, null);
+            _sm.CloseAllEntitySubscriptions(entity);
+            _sm.SubscribeOnDataFlow(DataMode.RowByRow, entity, "azaza", null, null);
+            _sm.CloseAllEntitySubscriptions(entity);
+            _sm.SubscribeOnDataFlow(DataMode.Bulk, entity, "azaza", null, null);
+            _sm.CloseAllEntitySubscriptions(entity);
+            _sm.SubscribeOnDataFlow(DataMode.RowByRow, entity, "azaza", null, null);
         }
     }
 }

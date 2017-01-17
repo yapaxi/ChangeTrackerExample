@@ -47,8 +47,8 @@ namespace IntegrationService.Host
             using (var rootScope = container.BeginLifetimeScope(rootScopeName))
             {
                 var programLogger = logFactory.CreateForType(typeof(Program));
-                var dbSchemaService = rootScope.Resolve<SchemaPersistenceService>();
-                var subscriptionManager = rootScope.Resolve<SubscriptionManager>();
+                var dbSchemaService = rootScope.Resolve<ISchemaPersistenceService>();
+                var subscriptionManager = rootScope.Resolve<ISubscriptionManager>();
 
                 foreach (var mapping in dbSchemaService.GetActiveMappings())
                 {
@@ -57,9 +57,9 @@ namespace IntegrationService.Host
                         subscriptionManager.SubscribeOnDataFlow(
                             DataMode.RowByRow,
                             mapping.QueueName,
-                            mapping.Name,
-                            new RuntimeMappingSchema(JsonConvert.DeserializeObject<MappingSchema>(mapping.Schema)),
-                            new WriteDestination(JsonConvert.DeserializeObject<StagingTable>(mapping.StagingTables)));
+                            mapping.EntityName,
+                            mapping.Schema,
+                            mapping.Destination);
                     }
                     catch (Exception e)
                     {

@@ -43,7 +43,7 @@ namespace IntegrationService.Host.DI
 
             builder.RegisterType<SchemaRepository>().InstancePerLifetimeScope();
             builder.RegisterType<DataRepository>().InstancePerLifetimeScope();
-            builder.RegisterType<SchemaPersistenceService>().InstancePerLifetimeScope();
+            builder.RegisterType<SchemaPersistenceService>().As<ISchemaPersistenceService>().InstancePerLifetimeScope();
 
             builder.RegisterType<RequestLifetimeHandler>().As<IRequestLifetimeHandler>().SingleInstance();
 
@@ -54,7 +54,9 @@ namespace IntegrationService.Host.DI
                 bulkBus: e.ResolveNamed<IBus>(Buses.BulkMessaging),
                 logger: e.Resolve<ILoggerFactory<ILogger>>().CreateForType(typeof(SubscriptionManager)),
                 loggerFactory: e.Resolve<ILoggerFactory<ILogger>>()
-            )).SingleInstance();
+            ))
+            .As<ISubscriptionManager>()
+            .SingleInstance();
 
             builder.RegisterType<FlatMessageConverter>().SingleInstance();
 

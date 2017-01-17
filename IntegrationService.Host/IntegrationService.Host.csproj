@@ -86,6 +86,7 @@
     <Compile Include="DAL\Contexts\DataContext.cs" />
     <Compile Include="DAL\DataRepository.cs" />
     <Compile Include="DAL\DDL\TableColumnDefinition.cs" />
+    <Compile Include="DAL\IStagingTable.cs" />
     <Compile Include="DAL\RepositoryBase.cs" />
     <Compile Include="DAL\SchemaRepository.cs" />
     <Compile Include="DAL\WriteDestination.cs" />
@@ -97,6 +98,10 @@
     <Compile Include="Converters\FlatMessageConverter.cs" />
     <Compile Include="Services\IMessagingService.cs" />
     <Compile Include="Services\IRequestResponseService.cs" />
+    <Compile Include="Services\ISchemaPersistenceService.cs" />
+    <Compile Include="Services\Policy\SerialExecutionAttribute.cs" />
+    <Compile Include="Services\ResolvedMapping.cs" />
+    <Compile Include="Subscriptions\ISubscriptionManager.cs" />
     <Compile Include="Subscriptions\MessageInfo.cs" />
     <Compile Include="Subscriptions\RawMessage.cs" />
     <Compile Include="Subscriptions\BufferingSubscription.cs" />

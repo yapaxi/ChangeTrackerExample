@@ -9,20 +9,20 @@ namespace IntegrationService.Host.Metadata
 {
     public class SchemaStatus
     {
-        public SchemaStatus(string name, bool fullRebuildRequired, bool isActive)
+        public SchemaStatus(string entityName, bool fullRebuildRequired, bool isActive)
         {
-            this.Name = name;
+            this.EntityName = entityName;
             this.IsActive = isActive;
             this.FullRebuildRequired = fullRebuildRequired;
         }
 
         public SchemaStatus(string name, Exception exception)
         {
-            this.Name = name;
+            this.EntityName = name;
             this.Exception = exception;
         }
 
-        public string Name { get; }
+        public string EntityName { get; }
 
         public bool FullRebuildRequired { get; }
 
@@ -35,12 +35,12 @@ namespace IntegrationService.Host.Metadata
 
     public class SchemaActivationResult
     {
-        public SchemaActivationResult(string name, IStagingTable table)
+        public SchemaActivationResult(string entityName, IStagingTable table)
         {
             this.StagingTable = table;
         }
 
-        public string Name { get; }
+        public string EntityName { get; }
 
         public IStagingTable StagingTable { get; }
     }

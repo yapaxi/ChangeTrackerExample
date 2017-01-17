@@ -1,4 +1,5 @@
 ﻿using Common;
+using Common.Runtime;
 using IntegrationService.Host.DAL;
 using System;
 using System.Collections.Generic;
@@ -10,13 +11,13 @@ namespace IntegrationService.Host.Subscriptions
 {
     public class MessageInfo
     {
-        public MessageInfo(RuntimeMappingSchema schema, IWriteDestination destination)
+        public MessageInfo(IRuntimeMappingSchema schema, IWriteDestination destination)
         {
             Schema = schema;
             Destination = destination;
         }
 
-        public RuntimeMappingSchema Schema { get; }
+        public IRuntimeMappingSchema Schema { get; }
 
         public IWriteDestination Destination { get; }
     }
