@@ -21,6 +21,7 @@ namespace IntegrationService.Host
             var logFactory = new NLogFactory();
 
             builder.RegisterModule(new ISModule<ILogger>(
+                args[0], args[1], args[2],
                 schemaDBConnectionString: @"server =.;database=SchemaDB;integrated security=SSPI",
                 dataDBConnectionString: @"server =.;database=SchemaDB;integrated security=SSPI",
                 rootScopeName: rootScopeName,

@@ -25,18 +25,32 @@ namespace IntegrationService.Host.DI
         private readonly string _dataDBConnectionString;
         private readonly string _rootScopeName;
         private readonly string _schemaDBConnectionString;
+        private readonly string _queueUser;
+        private readonly string _queuePassword;
+        private readonly string _queueHost;
         
-        public ISModule(string schemaDBConnectionString, string dataDBConnectionString, string rootScopeName, ILoggerFactory<TLogger> loggerFactory)
+        public ISModule(
+            string queueUser,
+            string queuePassword,
+            string queueHost,
+            string schemaDBConnectionString,
+            string dataDBConnectionString,
+            string rootScopeName,
+            ILoggerFactory<TLogger> loggerFactory)
             : base(loggerFactory)
         {
             _rootScopeName = rootScopeName;
             _schemaDBConnectionString = schemaDBConnectionString;
             _dataDBConnectionString = dataDBConnectionString;
+
+            _queueHost = queueHost;
+            _queuePassword = queuePassword;
+            _queueUser = queueUser;
         }
 
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterModule(new RabbitAutofacModule(_rootScopeName));
+            builder.RegisterModule(new RabbitAutofacModule(_queueUser, _queuePassword, _queueHost, _rootScopeName));
 
             builder.Register(e => new SchemaContext(_schemaDBConnectionString));
             builder.Register(e => new DataContext(_dataDBConnectionString));

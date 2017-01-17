@@ -11,14 +11,22 @@ namespace RabbitModel
 {
     public class RabbitAutofacModule : Autofac.Module
     {
-        private readonly string _password = "test";
-        private readonly string _user = "test";
-        private readonly string _host = "192.168.11.169";
+        private readonly string _password;
+        private readonly string _user;
+        private readonly string _host;
         private readonly string _scope;
         private readonly string _loopbackVHost;
 
-        public RabbitAutofacModule(string busResolveScope, string loopbackVHost = null)
+        public RabbitAutofacModule(
+            string user,
+            string password,
+            string host,
+            string busResolveScope,
+            string loopbackVHost = null)
         {
+            _password = password;
+            _user = user;
+            _host = host;
             _scope = busResolveScope;
             _loopbackVHost = loopbackVHost;
         }

@@ -32,6 +32,7 @@ namespace ChangeTrackerExample
             var containerBuilder = new ContainerBuilder();
 
             var module = new RabbitAutofacModule(
+                args[0], args[1], args[2],
                 busResolveScope: rootScope,
                 loopbackVHost: "CTTestLoopback"
             );
