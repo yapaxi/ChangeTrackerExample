@@ -39,7 +39,7 @@ namespace ChangeTrackerExample
 
             containerBuilder.RegisterModule(module);
 
-            RegisterDB(containerBuilder);
+            RegisterDB(args[3], containerBuilder);
             RegisterIS(containerBuilder);
             RegisterEntities(containerBuilder);
             RegisterHandlers(trackerLoopbackExchange, trackerLoopbackQueue, containerBuilder);
@@ -124,7 +124,7 @@ namespace ChangeTrackerExample
                     context.SaveChanges();
                     Console.WriteLine($"Generated: {entity.Id}");
 
-                    Thread.Sleep(1000);
+                    Thread.Sleep(10);
                     notifier.NotifyChanged<SomeEntity>(entity.Id);
                 }
 
@@ -145,11 +145,10 @@ namespace ChangeTrackerExample
             listener.Start();
         }
 
-        private static void RegisterDB(ContainerBuilder containerBuilder)
+        private static void RegisterDB(string connectionString, ContainerBuilder containerBuilder)
         {
-            var sourceDBConnectionString = ConfigurationManager.ConnectionStrings["sourceDB"].ConnectionString;
             containerBuilder
-                .Register(e => new SourceContext(sourceDBConnectionString))
+                .Register(e => new SourceContext(connectionString))
                 .As<SourceContext>()
                 .InstancePerLifetimeScope();
         }

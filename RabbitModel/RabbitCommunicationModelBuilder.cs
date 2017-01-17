@@ -54,7 +54,7 @@ namespace RabbitModel
                 case DataMode.RowByRow:
                     return _advancedBus.QueueDeclare(outputName, durable: true);
                 case DataMode.Bulk:
-                    return _advancedBus.QueueDeclare(outputName, durable: false);
+                    return _advancedBus.QueueDeclare(outputName, durable: false, autoDelete: true);
                 default:
                     throw new InvalidOperationException($"Unexpected mode {_mode}");
             }

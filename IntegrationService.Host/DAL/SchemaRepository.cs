@@ -35,7 +35,7 @@ namespace IntegrationService.Host.DAL
 
             var tableName = FormatTableName(STAGING_SCHEMA_NAME, schemalessTableName);
             MoveOldStagingTableIfExists(schemalessTableName);
-            CreateTableInternal(tableName, columns);
+            CreateTableInternal(tableName, schemalessTableName, columns);
             return new StagingTable()
             {
                 FullName = tableName,
@@ -44,11 +44,11 @@ namespace IntegrationService.Host.DAL
             };
         }
 
-        private string CreateTableInternal(string fqTableName, TableColumnDefinition[] columns)
+        private string CreateTableInternal(string fqTableName, string schemalessTableName, TableColumnDefinition[] columns)
         {
             _logger.Info($"Creating table {fqTableName}");
 
-            var sql = GetTableCreateSql(fqTableName, columns);
+            var sql = GetTableCreateSql(fqTableName, schemalessTableName, columns);
 
             _logger.Debug(sql);
 
@@ -95,7 +95,7 @@ namespace IntegrationService.Host.DAL
             return $"[{schema}].[{tableName}]";
         }
 
-        private static string GetTableCreateSql(string tableName, TableColumnDefinition[] columns)
+        private static string GetTableCreateSql(string tableName, string schemalessTableName, TableColumnDefinition[] columns)
         {
             const string indent = "    ";
             var builder = new StringBuilder();
@@ -115,15 +115,9 @@ namespace IntegrationService.Host.DAL
                     builder.Append(" not null");
                 }
 
-                if (i != columns.Length - 1)
-                {
-                    builder.AppendLine(",");
-                }
-                else
-                {
-                    builder.AppendLine();
-                }
+                builder.AppendLine(",");
             }
+            builder.AppendLine($"constraint [PK_{schemalessTableName}] primary key (Id)");
             builder.AppendLine(")");
             return builder.ToString();
         }
