@@ -8,6 +8,8 @@ namespace Common
 {
     public class MappingProperty
     {
+        public static readonly MappingProperty[] Childless = new MappingProperty[0];
+
         public string ShortName { get; set; }
         public string PathName { get; set; }
         public string ClrType { get; set; }

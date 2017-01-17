@@ -33,6 +33,8 @@ namespace IntegrationService.Host.Converters
 
         private void ConvertJTR(string json, IRuntimeMappingSchema runtimeSchema, Dictionary<string, List<Dictionary<string, object>>> properties)
         {
+            bool? isArray = null;
+
             using (var r = new JsonTextReader(new StringReader(json)))
             {
                 string currentProperty = null;
@@ -82,9 +84,16 @@ namespace IntegrationService.Host.Converters
                             currentProperty = (string)r.Value;
                             break;
                         case JsonToken.StartObject:
-                            pathStack.Push(r.Depth == 1 ? MappingSchema.RootName : ClearPath(r.Path));
-                            lineStack.Push(new Dictionary<string, object>());
-                            break;
+                            {
+                                if (isArray == null)
+                                {
+                                    isArray = false;
+                                }
+                                var path = IsObjectRoot(isArray, r.Depth) ? MappingSchema.RootName : ClearPath(r.Path);
+                                pathStack.Push(path);
+                                lineStack.Push(new Dictionary<string, object>());
+                                break;
+                            }
                         case JsonToken.EndObject:
                             var objectName = pathStack.Peek();
                             var lst = properties[objectName];
@@ -93,7 +102,7 @@ namespace IntegrationService.Host.Converters
                                 lst.Add(lineStack.Pop());
                             }
                             pathStack.Pop();
-                            if (r.Depth == 1)
+                            if (IsObjectRoot(isArray, r.Depth))
                             {
                                 pathStack.Clear();
                                 lineStack.Clear();
@@ -101,6 +110,10 @@ namespace IntegrationService.Host.Converters
                             }
                             break;
                         case JsonToken.StartArray:
+                            if (isArray == null)
+                            {
+                                isArray = true;
+                            }
                             break;
                         case JsonToken.EndArray:
                             break;
@@ -111,6 +124,11 @@ namespace IntegrationService.Host.Converters
                     }
                 }
             }
+        }
+
+        private static bool IsObjectRoot(bool? isArray, int depth)
+        {
+            return ((bool)isArray && depth == 1) || (!(bool)isArray && depth == 0);
         }
 
         private static Dictionary<string, List<Dictionary<string, object>>> CreateBlankProperties(IRuntimeMappingSchema runtimeSchema, int estimatedEntitiesCount)
