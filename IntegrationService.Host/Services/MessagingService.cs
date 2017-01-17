@@ -43,7 +43,7 @@ namespace IntegrationService.Host.Services
         {
             var messages = _converter.Convert(rawMessage, info.Schema);
 
-            foreach (var message in messages.Payload)
+            foreach (var message in messages.TablesWithData)
             {
                 var table = info.Destination.FlattenTables[message.Key];
                 _logger.Debug($"inserting line into {table.SystemName}");
@@ -61,10 +61,10 @@ namespace IntegrationService.Host.Services
             var converter = new FlatMessageConverter();
             var roots = converter.Convert(rawMessage, info.Schema);
             WriteElapsed("convert duration", sw);
-            foreach (var k in roots.Payload)
+            foreach (var tableData in roots.TablesWithData)
             {
-                var table = info.Destination.FlattenTables[k.Key];
-                _repository.BulkInsert(table, k.Value);
+                var table = info.Destination.FlattenTables[tableData.Key];
+                _repository.BulkInsert(table, tableData.Value);
             }
             WriteElapsed("insert duration", sw);
             sw.Stop();

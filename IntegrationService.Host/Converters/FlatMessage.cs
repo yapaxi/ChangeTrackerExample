@@ -8,11 +8,11 @@ namespace IntegrationService.Host.Converters
 {
     public class FlatMessage
     {
-        public FlatMessage(Dictionary<string, List<Dictionary<string, object>>> payload)
+        public FlatMessage(IReadOnlyDictionary<string, List<Dictionary<string, object>>> tablesWithData)
         {
-            Payload = payload;
+            TablesWithData = tablesWithData;
         }
 
-        public Dictionary<string, List<Dictionary<string, object>>> Payload { get; }
+        public IReadOnlyDictionary<string, List<Dictionary<string, object>>> TablesWithData { get; }
     }
 }
